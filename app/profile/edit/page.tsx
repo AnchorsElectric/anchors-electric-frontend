@@ -439,68 +439,6 @@ export default function EditProfilePage() {
             </div>
           </div>
 
-          {/* Change Password Section */}
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Change Password</h2>
-            <form onSubmit={handleChangePassword} className={styles.passwordForm}>
-              <div className={styles.fields}>
-                <div className={styles.field}>
-                  <label htmlFor="currentPassword">Current Password *</label>
-                  <input
-                    id="currentPassword"
-                    name="currentPassword"
-                    type="password"
-                    value={passwordData.currentPassword}
-                    onChange={handlePasswordChange}
-                    required
-                    disabled={changingPassword}
-                    placeholder="Enter your current password"
-                  />
-                </div>
-
-                <div className={styles.field}>
-                  <label htmlFor="newPassword">New Password *</label>
-                  <input
-                    id="newPassword"
-                    name="newPassword"
-                    type="password"
-                    value={passwordData.newPassword}
-                    onChange={handlePasswordChange}
-                    required
-                    minLength={8}
-                    disabled={changingPassword}
-                    placeholder="Enter new password (min 8 characters)"
-                  />
-                </div>
-
-                <div className={styles.field}>
-                  <label htmlFor="confirmPassword">Confirm New Password *</label>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    value={passwordData.confirmPassword}
-                    onChange={handlePasswordChange}
-                    required
-                    minLength={8}
-                    disabled={changingPassword}
-                    placeholder="Confirm new password"
-                  />
-                </div>
-              </div>
-
-              <div className={styles.passwordActions}>
-                <button
-                  type="submit"
-                  className={styles.passwordButton}
-                  disabled={changingPassword || !isPasswordFormValid()}
-                >
-                  {changingPassword ? 'Changing Password...' : 'Change Password'}
-                </button>
-              </div>
-            </form>
-          </div>
-
           <div className={styles.actions}>
             <button
               type="button"
@@ -519,6 +457,68 @@ export default function EditProfilePage() {
             </button>
           </div>
         </form>
+
+        {/* Change Password Section - Separate form outside main form */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Change Password</h2>
+          <form onSubmit={handleChangePassword} className={styles.passwordForm}>
+            <div className={styles.fields}>
+              <div className={styles.field}>
+                <label htmlFor="currentPassword">Current Password *</label>
+                <input
+                  id="currentPassword"
+                  name="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  disabled={changingPassword}
+                  placeholder="Enter your current password"
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="newPassword">New Password *</label>
+                <input
+                  id="newPassword"
+                  name="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  minLength={8}
+                  disabled={changingPassword}
+                  placeholder="Enter new password (min 8 characters)"
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="confirmPassword">Confirm New Password *</label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  minLength={8}
+                  disabled={changingPassword}
+                  placeholder="Confirm new password"
+                />
+              </div>
+            </div>
+
+            <div className={styles.passwordActions}>
+              <button
+                type="submit"
+                className={styles.passwordButton}
+                disabled={changingPassword || !isPasswordFormValid()}
+              >
+                {changingPassword ? 'Changing Password...' : 'Change Password'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
