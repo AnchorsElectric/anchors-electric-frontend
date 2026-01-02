@@ -1,21 +1,30 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { setAuthToken } from '@/lib/utils/auth';
 import styles from './login.module.scss';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      setSuccess('Registration successful! Please check your email to verify your account before logging in.');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
@@ -40,6 +49,7 @@ export default function LoginPage() {
         <h1 className={styles.title}>Login</h1>
         <p className={styles.subtitle}>Sign in to your account</p>
 
+        {success && <div className={styles.success}>{success}</div>}
         {error && <div className={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
@@ -76,6 +86,12 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div className={styles.forgotPassword}>
+          <a href="/forgot-password" className={styles.forgotLink}>
+            Forgot Password?
+          </a>
+        </div>
+
         <p className={styles.footer}>
           Don't have an account?{' '}
           <a href="/register" className={styles.link}>
@@ -87,3 +103,16 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Loading...</h1>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+}

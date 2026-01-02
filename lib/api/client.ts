@@ -1,7 +1,13 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { ApiResponse } from '../types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -47,6 +53,32 @@ class ApiClient {
   }
 
   // Auth methods
+  async register(data: {
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+    email: string;
+    password: string;
+    phone: string;
+    address1: string;
+    address2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    dateOfBirth: string;
+    ssn: string;
+    emergencyContact?: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      email?: string;
+      relationship: string;
+    };
+  }) {
+    const response = await this.client.post<ApiResponse>('/auth/register', data);
+    return response.data;
+  }
+
   async login(email: string, password: string) {
     const response = await this.client.post<ApiResponse>('/auth/login', {
       email,
@@ -55,160 +87,54 @@ class ApiClient {
     return response.data;
   }
 
-  async register(data: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-  }) {
-    const response = await this.client.post<ApiResponse>('/auth/register', data);
+  async forgotPassword(email: string) {
+    const response = await this.client.post<ApiResponse>('/auth/forgot-password', {
+      email,
+    });
     return response.data;
   }
 
-  async getCurrentUser() {
-    const response = await this.client.get<ApiResponse>('/auth/me');
+  async resetPassword(token: string, password: string) {
+    const response = await this.client.post<ApiResponse>('/auth/reset-password', {
+      token,
+      password,
+    });
     return response.data;
   }
 
-  async logout() {
-    const response = await this.client.post<ApiResponse>('/auth/logout');
-    return response.data;
-  }
-
-  // Employee methods
+  // Profile methods
   async getProfile() {
-    const response = await this.client.get<ApiResponse>('/employees/profile');
+    const response = await this.client.get<ApiResponse>('/profile');
     return response.data;
   }
 
   async updateProfile(data: {
+    firstName?: string;
+    middleName?: string | null;
+    lastName?: string;
     phone?: string;
-    address?: string;
+    address1?: string;
+    address2?: string | null;
     city?: string;
     state?: string;
     zipCode?: string;
+    emergencyContact?: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      email?: string | null;
+      relationship: string;
+    };
   }) {
-    const response = await this.client.put<ApiResponse>(
-      '/employees/profile',
-      data
-    );
+    const response = await this.client.put<ApiResponse>('/profile', data);
     return response.data;
   }
 
-  async registerEmployee(data: any) {
-    const response = await this.client.post<ApiResponse>(
-      '/employees/register',
-      data
-    );
-    return response.data;
-  }
-
-  async uploadDocument(file: File, documentType: string) {
-    const formData = new FormData();
-    formData.append('document', file);
-    formData.append('documentType', documentType);
-
-    const response = await this.client.post<ApiResponse>(
-      '/employees/documents',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-    return response.data;
-  }
-
-  // Emergency contacts
-  async addEmergencyContact(data: any) {
-    const response = await this.client.post<ApiResponse>(
-      '/employees/emergency-contacts',
-      data
-    );
-    return response.data;
-  }
-
-  async updateEmergencyContact(id: string, data: any) {
-    const response = await this.client.put<ApiResponse>(
-      `/employees/emergency-contacts/${id}`,
-      data
-    );
-    return response.data;
-  }
-
-  async deleteEmergencyContact(id: string) {
-    const response = await this.client.delete<ApiResponse>(
-      `/employees/emergency-contacts/${id}`
-    );
-    return response.data;
-  }
-
-  // Admin methods
-  async getApplications(params?: {
-    status?: string;
-    page?: number;
-    limit?: number;
-    search?: string;
-  }) {
-    const response = await this.client.get<ApiResponse>('/admin/applications', {
-      params,
+  async changePassword(currentPassword: string, newPassword: string) {
+    const response = await this.client.post<ApiResponse>('/profile/change-password', {
+      currentPassword,
+      newPassword,
     });
-    return response.data;
-  }
-
-  async getApplication(id: string) {
-    const response = await this.client.get<ApiResponse>(
-      `/admin/applications/${id}`
-    );
-    return response.data;
-  }
-
-  async approveApplication(id: string) {
-    const response = await this.client.post<ApiResponse>(
-      `/admin/applications/${id}/approve`
-    );
-    return response.data;
-  }
-
-  async rejectApplication(id: string, rejectionReason?: string) {
-    const response = await this.client.post<ApiResponse>(
-      `/admin/applications/${id}/reject`,
-      { status: 'REJECTED', rejectionReason }
-    );
-    return response.data;
-  }
-
-  async getEmployees(params?: {
-    status?: string;
-    page?: number;
-    limit?: number;
-    search?: string;
-  }) {
-    const response = await this.client.get<ApiResponse>('/admin/employees', {
-      params,
-    });
-    return response.data;
-  }
-
-  async getEmployee(id: string) {
-    const response = await this.client.get<ApiResponse>(`/admin/employees/${id}`);
-    return response.data;
-  }
-
-  async updateEmployee(id: string, data: any) {
-    const response = await this.client.put<ApiResponse>(
-      `/admin/employees/${id}`,
-      data
-    );
-    return response.data;
-  }
-
-  async updateEmployeeStatus(id: string, status: string) {
-    const response = await this.client.patch<ApiResponse>(
-      `/admin/employees/${id}/status`,
-      { status }
-    );
     return response.data;
   }
 }
