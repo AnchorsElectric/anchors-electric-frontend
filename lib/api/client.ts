@@ -137,6 +137,48 @@ class ApiClient {
     });
     return response.data;
   }
+
+  // Admin methods
+  async getUsers(search?: string) {
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    const response = await this.client.get<ApiResponse>(`/admin/users${params}`);
+    return response.data;
+  }
+
+  async getUserById(userId: string) {
+    const response = await this.client.get<ApiResponse>(`/admin/users/${userId}`);
+    return response.data;
+  }
+
+  async updateUserById(userId: string, data: {
+    firstName?: string;
+    middleName?: string | null;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address1?: string;
+    address2?: string | null;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    emergencyContact?: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      email?: string | null;
+      relationship: string;
+    };
+  }) {
+    const response = await this.client.put<ApiResponse>(`/admin/users/${userId}`, data);
+    return response.data;
+  }
+
+  async updateUserRole(userId: string, role: 'USER' | 'ADMIN') {
+    const response = await this.client.put<ApiResponse>(`/admin/users/${userId}/role`, {
+      role,
+    });
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();
