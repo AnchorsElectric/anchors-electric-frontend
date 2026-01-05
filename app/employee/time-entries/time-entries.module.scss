@@ -1,0 +1,472 @@
+.container {
+  min-height: 100vh;
+  padding: 2rem;
+  background: #f5f7fa;
+}
+
+.card {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #000000;
+  margin: 0;
+}
+
+.backLink {
+  color: #0070f3;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #0051cc;
+    text-decoration: underline;
+  }
+}
+
+.error {
+  background-color: #fee;
+  color: #c33;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #c33;
+}
+
+.success {
+  background-color: #efe;
+  color: #3c3;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #3c3;
+}
+
+.paymentTypeInfo {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+
+  p {
+    margin: 0.5rem 0;
+    color: #333;
+  }
+
+  .note {
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+  }
+}
+
+.calendarSection {
+  margin-bottom: 2rem;
+}
+
+.calendarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.monthButton {
+  background: #0070f3;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #0051cc;
+  }
+}
+
+.monthTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: #000000;
+}
+
+.calendar {
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.weekDays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.weekDay {
+  padding: 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.875rem;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.day {
+  min-height: 100px;
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+  background: white;
+
+  &:hover {
+    background: #f8f9fa;
+  }
+
+  &.selected {
+    border: 2px solid #0070f3;
+    box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
+  }
+
+  &.today {
+    border: 2px solid #ffc107;
+  }
+
+  &.future {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // Entry status background colors (these override hasEntry)
+  &.draft {
+    background: #fff9e6 !important; // Light yellow for draft
+  }
+
+  &.submitted {
+    background: #e6f7ff !important; // Light blue for submitted
+  }
+
+  &.approved {
+    background: #d4edda !important; // Light green for approved
+  }
+
+  &.rejected {
+    background: #f8d7da !important; // Light red for rejected
+  }
+
+  &.paid {
+    background: #e6f2ff !important; // Light blue for paid
+  }
+
+  // Generic entry indicator (only if no specific status class)
+  &.hasEntry:not(.draft):not(.submitted):not(.approved):not(.rejected):not(.paid) {
+    background: #e8f5e9; // Light green for any entry
+  }
+}
+
+.dayEmpty {
+  min-height: 100px;
+  background: #f8f9fa;
+}
+
+.dayNumber {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #333;
+}
+
+.dayEntry {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.hours {
+  color: #0070f3;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.checkmark {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+.statusBadge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  display: inline-block;
+  width: 110px;
+  text-align: center;
+  box-sizing: border-box;
+
+  &.draftBadge {
+    background-color: #ffc107; // Yellow
+    color: #333;
+  }
+
+  &.submittedBadge {
+    background-color: #87ceeb; // Light blue
+    color: #333;
+  }
+
+  &.approvedBadge {
+    background-color: #28a745; // Green
+    color: white;
+  }
+
+  &.rejectedBadge {
+    background-color: #dc3545; // Red
+    color: white;
+  }
+
+  &.paidBadge {
+    background-color: #007bff; // Blue
+    color: white;
+  }
+}
+
+.status {
+  font-size: 0.7rem;
+  color: #666;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+}
+
+.entryForm {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+}
+
+.formField {
+  margin-bottom: 1rem;
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    font-size: 1rem;
+    max-width: 200px;
+
+    &:focus {
+      outline: none;
+      border-color: #0070f3;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.helpText {
+  font-size: 0.875rem;
+  color: #666;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  font-style: italic;
+}
+
+.salaryNote {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.formActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.saveButton {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #218838;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.deleteButton {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #c82333;
+  }
+}
+
+.cancelButton {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #5a6268;
+  }
+}
+
+.submitSection {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+
+  h3 {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.submitInfo {
+  color: #666;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.submitButton {
+  background: #0070f3;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #0051cc;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.legend {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e0e0e0;
+
+  h4 {
+    margin-bottom: 1rem;
+    color: #000000;
+    font-weight: 600;
+  }
+}
+
+.legendItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  span {
+    color: #000000;
+    font-weight: 500;
+  }
+}
+
+.legendColor {
+  width: 20px;
+  height: 20px;
+  border-radius: 0.25rem;
+  border: 1px solid #e0e0e0;
+
+  &.draft {
+    background: #ffc107; // Yellow (matches status badge)
+  }
+
+  &.submitted {
+    background: #87ceeb; // Light blue (matches status badge)
+  }
+
+  &.approved {
+    background: #28a745; // Green (matches status badge)
+  }
+
+  &.rejected {
+    background: #dc3545; // Red (matches status badge)
+  }
+
+  &.paid {
+    background: #007bff; // Blue (matches status badge)
+  }
+}
+

@@ -45,6 +45,16 @@ export default function UserDetailPage() {
   const [success, setSuccess] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [employeeProfile, setEmployeeProfile] = useState<{ 
+    paymentType: 'HOURLY' | 'SALARY';
+    hourlyRate?: number;
+    salaryAmount?: number;
+  } | null>(null);
+  const [employeePaymentType, setEmployeePaymentType] = useState<'HOURLY' | 'SALARY'>('HOURLY');
+  const [employeeHourlyRate, setEmployeeHourlyRate] = useState('');
+  const [employeeSalaryAmount, setEmployeeSalaryAmount] = useState('');
+  const [savingEmployee, setSavingEmployee] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     middleName: '',
@@ -74,6 +84,7 @@ export default function UserDetailPage() {
 
     checkAdminStatus();
     loadUser();
+    loadEmployeeProfile();
   }, [router, userId]);
 
   const checkAdminStatus = async () => {
@@ -131,6 +142,112 @@ export default function UserDetailPage() {
       setError(err.response?.data?.error || 'Failed to load user');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEmployeeProfile = async () => {
+    try {
+      const response = await apiClient.getEmployeeProfile(userId);
+      if (response.success && response.data) {
+        const employee = (response.data as any).employee;
+        const profile: any = {
+          paymentType: employee.paymentType || 'HOURLY',
+        };
+        if (employee.hourlyRate) {
+          profile.hourlyRate = parseFloat(employee.hourlyRate.toString());
+          setEmployeeHourlyRate(employee.hourlyRate.toString());
+        }
+        if (employee.salaryAmount) {
+          profile.salaryAmount = parseFloat(employee.salaryAmount.toString());
+          setEmployeeSalaryAmount(employee.salaryAmount.toString());
+        }
+        setEmployeeProfile(profile);
+        setEmployeePaymentType(employee.paymentType || 'HOURLY');
+      } else {
+        // Employee profile doesn't exist yet, that's okay
+        setEmployeeProfile(null);
+      }
+        } catch (err: any) {
+          // 404 means no employee profile exists yet, which is fine
+          setEmployeeProfile(null);
+        }
+  };
+
+  const handleCreateEmployeeProfile = async () => {
+    if (employeePaymentType === 'HOURLY' && (!employeeHourlyRate || parseFloat(employeeHourlyRate) <= 0)) {
+      setError('Please enter a valid hourly rate');
+      return;
+    }
+    if (employeePaymentType === 'SALARY' && (!employeeSalaryAmount || parseFloat(employeeSalaryAmount) <= 0)) {
+      setError('Please enter a valid salary amount');
+      return;
+    }
+
+    setSavingEmployee(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const data: any = {
+        paymentType: employeePaymentType,
+      };
+      if (employeePaymentType === 'HOURLY') {
+        data.hourlyRate = parseFloat(employeeHourlyRate);
+      } else {
+        data.salaryAmount = parseFloat(employeeSalaryAmount);
+      }
+
+      const response = await apiClient.createEmployeeProfile(userId, data);
+      if (response.success) {
+        setSuccess(response.message || 'Employee profile created successfully!');
+        setShowEmployeeModal(false);
+        await loadEmployeeProfile();
+      } else {
+        setError(response.error || 'Failed to create employee profile');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create employee profile');
+    } finally {
+      setSavingEmployee(false);
+    }
+  };
+
+  const handleUpdateEmployeeProfile = async () => {
+    if (employeePaymentType === 'HOURLY' && (!employeeHourlyRate || parseFloat(employeeHourlyRate) <= 0)) {
+      setError('Please enter a valid hourly rate');
+      return;
+    }
+    if (employeePaymentType === 'SALARY' && (!employeeSalaryAmount || parseFloat(employeeSalaryAmount) <= 0)) {
+      setError('Please enter a valid salary amount');
+      return;
+    }
+
+    setSavingEmployee(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const data: any = {
+        paymentType: employeePaymentType,
+      };
+      if (employeePaymentType === 'HOURLY') {
+        data.hourlyRate = parseFloat(employeeHourlyRate);
+      } else {
+        data.salaryAmount = parseFloat(employeeSalaryAmount);
+      }
+
+      const response = await apiClient.updateEmployeeProfile(userId, data);
+      if (response.success) {
+        setSuccess(response.message || 'Employee profile updated successfully!');
+        setShowEmployeeModal(false);
+        await loadEmployeeProfile();
+      } else {
+        setError(response.error || 'Failed to update employee profile');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update employee profile');
+    } finally {
+      setSavingEmployee(false);
     }
   };
 
@@ -246,9 +363,30 @@ export default function UserDetailPage() {
         <h1 className={styles.title}>User Details</h1>
         <div className={styles.headerActions}>
           {!isEditing && (
-            <button onClick={() => setIsEditing(true)} className={styles.editButton}>
-              Edit User
-            </button>
+            <>
+              <button onClick={() => setIsEditing(true)} className={styles.editButton}>
+                Edit User
+              </button>
+              {!employeeProfile ? (
+                <button onClick={() => {
+                  setEmployeePaymentType('HOURLY');
+                  setEmployeeHourlyRate('');
+                  setEmployeeSalaryAmount('');
+                  setShowEmployeeModal(true);
+                }} className={styles.createEmployeeButton}>
+                  Create Employee Profile
+                </button>
+              ) : (
+                <button onClick={() => {
+                  setEmployeePaymentType(employeeProfile.paymentType);
+                  setEmployeeHourlyRate(employeeProfile.hourlyRate?.toString() || '');
+                  setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
+                  setShowEmployeeModal(true);
+                }} className={styles.editEmployeeButton}>
+                  Edit Employee Profile
+                </button>
+              )}
+            </>
           )}
           <button onClick={() => router.push('/admin/users')} className={styles.backButton}>
             ← Back to Users
@@ -549,6 +687,40 @@ export default function UserDetailPage() {
           </div>
         </div>
 
+        {/* Employee Profile */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Employee Profile</h2>
+          {employeeProfile ? (
+            <div className={styles.grid}>
+              <div className={styles.field}>
+                <label>Payment Type</label>
+                <div className={styles.value}>
+                  {employeeProfile.paymentType}
+                </div>
+              </div>
+              {employeeProfile.paymentType === 'HOURLY' && employeeProfile.hourlyRate ? (
+                <div className={styles.field}>
+                  <label>Hourly Rate</label>
+                  <div className={styles.value}>
+                    ${employeeProfile.hourlyRate.toFixed(2)}/hour
+                  </div>
+                </div>
+              ) : employeeProfile.salaryAmount ? (
+                <div className={styles.field}>
+                  <label>Salary Amount</label>
+                  <div className={styles.value}>
+                    ${employeeProfile.salaryAmount.toFixed(2)}/period
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className={styles.noEmployeeProfile}>
+              <p>No employee profile has been created for this user yet.</p>
+            </div>
+          )}
+        </div>
+
         {/* Account Information */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Account Information</h2>
@@ -620,6 +792,95 @@ export default function UserDetailPage() {
           </div>
         )}
       </form>
+
+      {/* Employee Profile Modal */}
+      {showEmployeeModal && (
+        <div className={styles.modalOverlay} onClick={() => !savingEmployee && setShowEmployeeModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>
+                {employeeProfile ? 'Edit Employee Profile' : 'Create Employee Profile'}
+              </h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !savingEmployee && setShowEmployeeModal(false)}
+                disabled={savingEmployee}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.field}>
+                <label htmlFor="paymentType">Payment Type</label>
+                <select
+                  id="paymentType"
+                  value={employeePaymentType}
+                  onChange={(e) => {
+                    setEmployeePaymentType(e.target.value as 'HOURLY' | 'SALARY');
+                    setEmployeeHourlyRate('');
+                    setEmployeeSalaryAmount('');
+                  }}
+                  className={styles.input}
+                  required
+                  disabled={savingEmployee}
+                >
+                  <option value="HOURLY">Hourly</option>
+                  <option value="SALARY">Salary</option>
+                </select>
+              </div>
+              {employeePaymentType === 'HOURLY' ? (
+                <div className={styles.field}>
+                  <label htmlFor="hourlyRate">Hourly Rate ($)</label>
+                  <input
+                    id="hourlyRate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={employeeHourlyRate}
+                    onChange={(e) => setEmployeeHourlyRate(e.target.value)}
+                    className={styles.input}
+                    placeholder="0.00"
+                    required
+                    disabled={savingEmployee}
+                  />
+                </div>
+              ) : (
+                <div className={styles.field}>
+                  <label htmlFor="salaryAmount">Salary Amount ($)</label>
+                  <input
+                    id="salaryAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={employeeSalaryAmount}
+                    onChange={(e) => setEmployeeSalaryAmount(e.target.value)}
+                    className={styles.input}
+                    placeholder="0.00"
+                    required
+                    disabled={savingEmployee}
+                  />
+                </div>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => setShowEmployeeModal(false)}
+                disabled={savingEmployee}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.saveButton}
+                onClick={employeeProfile ? handleUpdateEmployeeProfile : handleCreateEmployeeProfile}
+                disabled={savingEmployee}
+              >
+                {savingEmployee ? 'Saving...' : employeeProfile ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

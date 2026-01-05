@@ -1,0 +1,85 @@
+.employeeContainer {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 2rem;
+}
+
+.employeeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+
+.employeeTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #000000;
+  margin: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+  background: white;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.tab {
+  padding: 1rem 2rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  top: 2px;
+
+  &:hover {
+    color: #0070f3;
+    background-color: #f8f9fa;
+  }
+}
+
+.activeTab {
+  color: #0070f3;
+  border-bottom-color: #0070f3;
+  background-color: #f8f9fa;
+}
+
+.content {
+  padding: 0 1rem;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 1.5rem;
+  color: #666;
+}
+
+.logoutButton {
+  padding: 0.75rem 2rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #c82333;
+  }
+}
+

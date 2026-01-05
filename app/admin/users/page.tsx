@@ -17,6 +17,10 @@ interface User {
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  employee?: {
+    id: string;
+    paymentType: string;
+  } | null;
 }
 
 export default function AdminUsersPage() {
@@ -60,7 +64,8 @@ export default function AdminUsersPage() {
       setError('');
       const response = await apiClient.getUsers(search);
       if (response.success && response.data) {
-        setUsers((response.data as any).users || []);
+        const usersData = (response.data as any).users || [];
+        setUsers(usersData);
       } else {
         setError(response.error || 'Failed to load users');
       }
@@ -102,11 +107,6 @@ export default function AdminUsersPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>User Management</h1>
-        <a href="/dashboard" className={styles.backLink}>← Back to Dashboard</a>
-      </div>
-
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.searchSection}>
@@ -150,6 +150,7 @@ export default function AdminUsersPage() {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Role</th>
+                <th>Employee Profile</th>
                 <th>Email Verified</th>
                 <th>Created At</th>
               </tr>
@@ -157,7 +158,7 @@ export default function AdminUsersPage() {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={styles.noData}>
+                  <td colSpan={7} className={styles.noData}>
                     No users found
                   </td>
                 </tr>
@@ -178,6 +179,15 @@ export default function AdminUsersPage() {
                       <span className={`${styles.role} ${styles[user.role.toLowerCase()]}`}>
                         {user.role}
                       </span>
+                    </td>
+                    <td>
+                      {user.employee && user.employee !== null ? (
+                        <span className={styles.hasEmployeeProfile}>
+                          ✓ {user.employee.paymentType}
+                        </span>
+                      ) : (
+                        <span className={styles.noEmployeeProfile}>✗ None</span>
+                      )}
                     </td>
                     <td>
                       {user.emailVerified ? (

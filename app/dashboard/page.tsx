@@ -40,9 +40,20 @@ function DashboardContent() {
       if (response.success && response.data) {
         const isUserAdmin = (response.data as any).isAdmin || false;
         setIsAdmin(isUserAdmin);
+        
+        // Check if user has employee profile
+        const user = (response.data as any).user;
+        const hasEmployeeProfile = user?.employee && user.employee !== null && user.employee !== undefined;
+        
+        // Redirect based on role
+        if (isUserAdmin) {
+          router.push('/admin/profile');
+        } else if (hasEmployeeProfile) {
+          router.push('/employee/profile');
+        }
       }
     } catch (err) {
-      console.error('Failed to check admin status:', err);
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -53,6 +64,11 @@ function DashboardContent() {
     router.push('/login');
   };
 
+  if (loading) {
+    return null; // Will redirect based on role
+  }
+
+  // Regular user dashboard
   return (
     <div className={styles.container}>
       <div className={styles.card}>
@@ -69,11 +85,9 @@ function DashboardContent() {
           <a href="/profile/edit" className={styles.editButton}>
             Edit Profile
           </a>
-          {isAdmin && (
-            <a href="/admin/users" className={styles.adminButton}>
-              Manage Users
-            </a>
-          )}
+          <a href="/time-entries" className={styles.editButton}>
+            Time Entries
+          </a>
           <button onClick={handleLogout} className={styles.logoutButton}>
             Logout
           </button>

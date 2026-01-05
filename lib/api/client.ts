@@ -179,6 +179,103 @@ class ApiClient {
     });
     return response.data;
   }
+
+  async createEmployeeProfile(
+    userId: string,
+    data: {
+      paymentType: 'HOURLY' | 'SALARY';
+      hourlyRate?: number;
+      salaryAmount?: number;
+    }
+  ) {
+    const response = await this.client.post<ApiResponse>(`/admin/users/${userId}/employee`, data);
+    return response.data;
+  }
+
+  async getEmployeeProfile(userId: string) {
+    const response = await this.client.get<ApiResponse>(`/admin/users/${userId}/employee`);
+    return response.data;
+  }
+
+  async updateEmployeeProfile(
+    userId: string,
+    data: {
+      paymentType: 'HOURLY' | 'SALARY';
+      hourlyRate?: number;
+      salaryAmount?: number;
+    }
+  ) {
+    const response = await this.client.put<ApiResponse>(`/admin/users/${userId}/employee`, data);
+    return response.data;
+  }
+
+  // Time Entry Methods
+  async getMyTimeEntries(params?: { startDate?: string; endDate?: string; status?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.status) queryParams.append('status', params.status);
+    
+    const url = `/time-entries${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await this.client.get<ApiResponse>(url);
+    return response.data;
+  }
+
+  async createOrUpdateTimeEntry(data: { date: string; hours?: number | null }) {
+    const response = await this.client.post<ApiResponse>('/time-entries', data);
+    return response.data;
+  }
+
+  async submitTimeEntries(entryIds: string[]) {
+    const response = await this.client.post<ApiResponse>('/time-entries/submit', { entryIds });
+    return response.data;
+  }
+
+  async deleteTimeEntry(entryId: string) {
+    const response = await this.client.delete<ApiResponse>(`/time-entries/${entryId}`);
+    return response.data;
+  }
+
+  async getMyTimeEntriesHistory(params?: { status?: string; startDate?: string; endDate?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+
+    const queryString = queryParams.toString();
+    const url = `/time-entries/history${queryString ? `?${queryString}` : ''}`;
+    const response = await this.client.get<ApiResponse>(url);
+    return response.data;
+  }
+
+  // Admin Time Entry Review Methods
+  async getSubmittedTimeEntries(params?: { status?: string; employeeId?: string; startDate?: string; endDate?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.employeeId) queryParams.append('employeeId', params.employeeId);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+
+    const response = await this.client.get<ApiResponse>(`/admin/time-entries?${queryParams.toString()}`);
+    return response.data;
+  }
+
+  async approveTimeEntry(timeEntryId: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/time-entries/${timeEntryId}/approve`);
+    return response.data;
+  }
+
+  async rejectTimeEntry(timeEntryId: string, rejectionReason?: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/time-entries/${timeEntryId}/reject`, {
+      rejectionReason: rejectionReason || null,
+    });
+    return response.data;
+  }
+
+  async markTimeEntryAsPaid(timeEntryId: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/time-entries/${timeEntryId}/mark-paid`);
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

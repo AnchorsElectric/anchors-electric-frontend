@@ -1,0 +1,141 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { getAuthToken, removeAuthToken } from '@/lib/utils/auth';
+import { apiClient } from '@/lib/api/client';
+import styles from './admin-layout.module.scss';
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'users' | 'time-entries' | 'time-entries-history' | 'profile'>('profile');
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    checkAdminStatus();
+  }, [router]);
+
+  useEffect(() => {
+    // Set active tab based on current path
+    if (pathname === '/admin/time-entries') {
+      setActiveTab('time-entries');
+    } else if (pathname === '/admin/time-entries/history') {
+      setActiveTab('time-entries-history');
+    } else if (pathname?.startsWith('/admin/users')) {
+      setActiveTab('users');
+    } else if (pathname === '/admin/profile') {
+      setActiveTab('profile');
+    } else {
+      // Default to profile if path doesn't match
+      setActiveTab('profile');
+    }
+  }, [pathname]);
+
+  const checkAdminStatus = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.getProfile();
+      if (response.success && response.data) {
+        const isUserAdmin = (response.data as any).isAdmin || false;
+        setIsAdmin(isUserAdmin);
+        if (!isUserAdmin) {
+          // Check if user has employee profile
+          const user = (response.data as any).user;
+          const hasEmployeeProfile = user?.employee && user.employee !== null && user.employee !== undefined;
+          if (hasEmployeeProfile) {
+            router.push('/employee/profile');
+          } else {
+            router.push('/dashboard');
+          }
+        }
+      }
+    } catch (err) {
+      router.push('/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    removeAuthToken();
+    router.push('/login');
+  };
+
+  const handleTabClick = (tab: 'users' | 'time-entries' | 'time-entries-history' | 'profile') => {
+    setActiveTab(tab);
+    if (tab === 'users') {
+      router.push('/admin/users');
+    } else if (tab === 'time-entries') {
+      router.push('/admin/time-entries');
+    } else if (tab === 'time-entries-history') {
+      router.push('/admin/time-entries/history');
+    } else {
+      router.push('/admin/profile');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.adminContainer}>
+        <div className={styles.loading}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
+
+  return (
+    <div className={styles.adminContainer}>
+      <div className={styles.adminHeader}>
+        <h1 className={styles.adminTitle}>Admin Dashboard</h1>
+        <button onClick={handleLogout} className={styles.logoutButton}>
+          Logout
+        </button>
+      </div>
+      <div className={styles.tabs}>
+        <button
+          className={`${styles.tab} ${activeTab === 'profile' ? styles.activeTab : ''}`}
+          onClick={() => handleTabClick('profile')}
+        >
+          Profile
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'users' ? styles.activeTab : ''}`}
+          onClick={() => handleTabClick('users')}
+        >
+          Manage Users
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'time-entries' ? styles.activeTab : ''}`}
+          onClick={() => handleTabClick('time-entries')}
+        >
+          Review Time Entries
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'time-entries-history' ? styles.activeTab : ''}`}
+          onClick={() => handleTabClick('time-entries-history')}
+        >
+          Time Entries History
+        </button>
+      </div>
+      <div className={styles.content}>
+        {children}
+      </div>
+    </div>
+  );
+}
+

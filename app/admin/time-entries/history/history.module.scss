@@ -1,0 +1,220 @@
+.container {
+  min-height: 100vh;
+  padding: 2rem;
+  background: #f5f7fa;
+}
+
+.card {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #000000;
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filters label {
+  font-weight: 500;
+  color: #333;
+}
+
+.statusSelect {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #0070f3;
+    box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.1);
+  }
+}
+
+.error {
+  background-color: #fee;
+  color: #c33;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #c33;
+}
+
+.noData {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.tableContainer {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.table th {
+  background: #f8f9fa;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  color: #333;
+  font-size: 0.875rem;
+}
+
+.table tr:hover {
+  background: #f8f9fa;
+}
+
+.weekRow {
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #e8f4f8 !important;
+  }
+
+  &.expanded {
+    background: #f0f8ff !important;
+  }
+
+  td {
+    cursor: pointer;
+  }
+}
+
+.expandableCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.expandIcon {
+  font-size: 0.75rem;
+  color: #666;
+  min-width: 1rem;
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.dayHeaderRow {
+  background: #f0f0f0 !important;
+  
+  &:hover {
+    background: #f0f0f0 !important;
+  }
+}
+
+.dayHeader {
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem;
+  color: #666;
+  border-top: 2px solid #e0e0e0;
+}
+
+.dayRow {
+  background: #fafafa !important;
+  
+  &:hover {
+    background: #f5f5f5 !important;
+  }
+
+  td {
+    padding: 1rem !important;
+    font-size: 0.875rem;
+    color: #333;
+    border-bottom: 1px solid #e8e8e8;
+  }
+}
+
+.rejectionReasonRow {
+  background: #fff5f5 !important;
+  
+  &:hover {
+    background: #fff5f5 !important;
+  }
+}
+
+.rejectionReasonCell {
+  padding: 1rem 1rem 1rem 3rem !important;
+  font-size: 0.875rem;
+  color: #666;
+  border-bottom: 1px solid #e8e8e8;
+  font-style: italic;
+}
+
+.paidBadge,
+.approvedBadge,
+.submittedBadge,
+.rejectedBadge,
+.draftBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  width: 110px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.paidBadge {
+  background-color: #007bff; // Blue
+  color: white;
+}
+
+.approvedBadge {
+  background-color: #28a745; // Green
+  color: white;
+}
+
+.submittedBadge {
+  background-color: #87ceeb; // Light blue
+  color: #333;
+}
+
+.rejectedBadge {
+  background-color: #dc3545; // Red
+  color: white;
+}
+
+.draftBadge {
+  background-color: #ffc107; // Yellow
+  color: #333;
+}
+
