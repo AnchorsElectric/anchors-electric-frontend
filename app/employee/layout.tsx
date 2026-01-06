@@ -15,7 +15,7 @@ export default function EmployeeLayout({
   const pathname = usePathname();
   const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'time-entries' | 'time-entries-history' | 'profile'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'time-entries'>('profile');
 
   useEffect(() => {
     const token = getAuthToken();
@@ -31,8 +31,6 @@ export default function EmployeeLayout({
     // Set active tab based on current path
     if (pathname === '/employee/time-entries') {
       setActiveTab('time-entries');
-    } else if (pathname === '/employee/time-entries/history') {
-      setActiveTab('time-entries-history');
     } else if (pathname === '/employee/profile') {
       setActiveTab('profile');
     } else {
@@ -75,12 +73,10 @@ export default function EmployeeLayout({
     router.push('/login');
   };
 
-  const handleTabClick = (tab: 'time-entries' | 'time-entries-history' | 'profile') => {
+  const handleTabClick = (tab: 'profile' | 'time-entries') => {
     setActiveTab(tab);
     if (tab === 'time-entries') {
       router.push('/employee/time-entries');
-    } else if (tab === 'time-entries-history') {
-      router.push('/employee/time-entries/history');
     } else {
       router.push('/employee/profile');
     }
@@ -118,12 +114,6 @@ export default function EmployeeLayout({
           onClick={() => handleTabClick('time-entries')}
         >
           Time Entries
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'time-entries-history' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('time-entries-history')}
-        >
-          Time Entries History
         </button>
       </div>
       <div className={styles.content}>

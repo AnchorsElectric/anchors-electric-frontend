@@ -15,7 +15,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'time-entries' | 'time-entries-history' | 'profile'>('profile');
+  const [activeTab, setActiveTab] = useState<'users' | 'profile'>('profile');
 
   useEffect(() => {
     const token = getAuthToken();
@@ -29,11 +29,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     // Set active tab based on current path
-    if (pathname === '/admin/time-entries') {
-      setActiveTab('time-entries');
-    } else if (pathname === '/admin/time-entries/history') {
-      setActiveTab('time-entries-history');
-    } else if (pathname?.startsWith('/admin/users')) {
+    if (pathname?.startsWith('/admin/users')) {
       setActiveTab('users');
     } else if (pathname === '/admin/profile') {
       setActiveTab('profile');
@@ -73,14 +69,10 @@ export default function AdminLayout({
     router.push('/login');
   };
 
-  const handleTabClick = (tab: 'users' | 'time-entries' | 'time-entries-history' | 'profile') => {
+  const handleTabClick = (tab: 'users' | 'profile') => {
     setActiveTab(tab);
     if (tab === 'users') {
       router.push('/admin/users');
-    } else if (tab === 'time-entries') {
-      router.push('/admin/time-entries');
-    } else if (tab === 'time-entries-history') {
-      router.push('/admin/time-entries/history');
     } else {
       router.push('/admin/profile');
     }
@@ -118,18 +110,6 @@ export default function AdminLayout({
           onClick={() => handleTabClick('users')}
         >
           Manage Users
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'time-entries' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('time-entries')}
-        >
-          Review Time Entries
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'time-entries-history' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('time-entries-history')}
-        >
-          Time Entries History
         </button>
       </div>
       <div className={styles.content}>

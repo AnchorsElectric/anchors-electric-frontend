@@ -1,429 +1,248 @@
 .container {
-  min-height: 100vh;
-  padding: 2rem;
-  background: #f5f7fa;
-}
-
-.card {
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+.card {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .title {
   font-size: 2rem;
-  font-weight: 700;
-  color: #000000;
-  margin: 0;
-}
-
-.backLink {
-  color: #0070f3;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s;
-
-  &:hover {
-    color: #0051cc;
-    text-decoration: underline;
-  }
+  font-weight: 600;
+  margin-bottom: 2rem;
+  color: #333;
 }
 
 .error {
   background-color: #fee;
   color: #c33;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-  border: 1px solid #c33;
-}
-
-.success {
-  background-color: #efe;
-  color: #3c3;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-  border: 1px solid #3c3;
-}
-
-.paymentTypeInfo {
-  background: #f8f9fa;
   padding: 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 2rem;
-
-  p {
-    margin: 0.5rem 0;
-    color: #333;
-  }
-
-  .note {
-    font-size: 0.9rem;
-    color: #666;
-    font-style: italic;
-  }
-}
-
-.calendarSection {
-  margin-bottom: 2rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
 }
 
 .calendarHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
 }
 
 .monthButton {
-  background: #0070f3;
-  color: white;
-  border: none;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.5rem;
+  color: #333;
   transition: background-color 0.2s;
 
   &:hover {
-    background: #0051cc;
+    background: #e0e0e0;
   }
 }
 
 .monthTitle {
   font-size: 1.5rem;
   font-weight: 600;
+  color: #333;
   margin: 0;
-  color: #000000;
 }
 
 .calendar {
-  border: 1px solid #e0e0e0;
-  border-radius: 0.5rem;
-  overflow: hidden;
+  margin-bottom: 2rem;
 }
 
 .weekDays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.weekDayWrapper {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 0.25rem;
+  align-items: start;
+}
+
+.weekDaySpacer {
+  height: 100%;
+  min-height: 0;
 }
 
 .weekDay {
-  padding: 0.75rem;
   text-align: center;
-  font-weight: 600;
-  color: #333;
+  font-weight: 500;
+  color: #6b7280;
+  padding: 0;
   font-size: 0.875rem;
+  line-height: 1.2;
 }
 
-.days {
+.daysGrid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  gap: 0.75rem;
 }
 
-.day {
-  min-height: 100px;
-  border: 1px solid #e0e0e0;
-  padding: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  position: relative;
-  background: white;
-
-  &:hover {
-    background: #f8f9fa;
-  }
-
-  &.selected {
-    border: 2px solid #0070f3;
-    box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
-  }
-
-  &.today {
-    border: 2px solid #ffc107;
-  }
-
-  &.future {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  // Entry status background colors (these override hasEntry)
-  &.draft {
-    background: #fff9e6 !important; // Light yellow for draft
-  }
-
-  &.submitted {
-    background: #e6f7ff !important; // Light blue for submitted
-  }
-
-  &.approved {
-    background: #d4edda !important; // Light green for approved
-  }
-
-  &.rejected {
-    background: #f8d7da !important; // Light red for rejected
-  }
-
-  &.paid {
-    background: #e6f2ff !important; // Light blue for paid
-  }
-
-  // Generic entry indicator (only if no specific status class)
-  &.hasEntry:not(.draft):not(.submitted):not(.approved):not(.rejected):not(.paid) {
-    background: #e8f5e9; // Light green for any entry
-  }
-}
-
-.dayEmpty {
-  min-height: 100px;
-  background: #f8f9fa;
+.dayWrapper {
+  display: grid;
+  grid-template-rows: auto 120px;
+  gap: 0.5rem;
 }
 
 .dayNumber {
   font-weight: 600;
-  margin-bottom: 0.25rem;
-  color: #333;
+  color: #1f2937;
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 0.25rem 0;
 }
 
-.dayEntry {
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
+.day,
+.dayEmpty {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.75rem !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-}
-
-.hours {
-  color: #0070f3;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.checkmark {
-  color: #28a745;
-  font-weight: 600;
-  font-size: 0.7rem;
-}
-
-.statusBadge {
-  font-size: 0.6rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.25rem;
-  display: inline-block;
-  width: 110px;
-  text-align: center;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
   box-sizing: border-box;
 
-  &.draftBadge {
-    background-color: #ffc107; // Yellow
-    color: #333;
-  }
-
-  &.submittedBadge {
-    background-color: #87ceeb; // Light blue
-    color: #333;
-  }
-
-  &.approvedBadge {
-    background-color: #28a745; // Green
-    color: white;
-  }
-
-  &.rejectedBadge {
-    background-color: #dc3545; // Red
-    color: white;
-  }
-
-  &.paidBadge {
-    background-color: #007bff; // Blue
-    color: white;
+  &:hover {
+    border-color: #3b82f6;
+    border-width: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
   }
 }
 
-.status {
-  font-size: 0.7rem;
-  color: #666;
-  margin-top: 0.25rem;
-  text-transform: uppercase;
-}
-
-.entryForm {
-  background: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  margin-bottom: 2rem;
-
-  h3 {
-    margin-top: 0;
-    margin-bottom: 1rem;
+.dayEmpty {
+  cursor: default;
+  background: #f9fafb;
+  border-color: #f3f4f6;
+  
+  &:hover {
+    border-color: #f3f4f6;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 }
 
-.formField {
-  margin-bottom: 1rem;
-
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: #333;
-  }
-
-  input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 0.25rem;
-    font-size: 1rem;
-    max-width: 200px;
-
-    &:focus {
-      outline: none;
-      border-color: #0070f3;
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+.dayRegular {
+  background: #dbeafe;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 0.75rem !important;
+  
+  &:hover {
+    background: #bfdbfe;
+    border-color: #2563eb;
   }
 }
 
-.helpText {
-  font-size: 0.875rem;
-  color: #666;
-  margin-top: 0.5rem;
-  margin-bottom: 0;
-  font-style: italic;
+.dayPto {
+  background: #fed7aa;
+  border: 2px solid #f97316;
+  border-radius: 12px;
+  padding: 0.75rem !important;
+  
+  &:hover {
+    background: #fdba74;
+    border-color: #ea580c;
+  }
 }
 
-.salaryNote {
-  color: #666;
-  font-style: italic;
-  margin-bottom: 1rem;
+.daySick {
+  background: #fce7f3;
+  border: 2px solid #ec4899;
+  border-radius: 12px;
+  padding: 0.75rem !important;
+  
+  &:hover {
+    background: #fbcfe8;
+    border-color: #db2777;
+  }
 }
 
-.formActions {
+.dayTravel {
+  background: #fce7f3;
+  border: 2px solid #ec4899;
+  border-radius: 12px;
+  padding: 0.75rem !important;
+  
+  &:hover {
+    background: #fbcfe8;
+    border-color: #db2777;
+  }
+}
+
+.dayHoliday {
+  background: #e9d5ff;
+  border: 2px solid #a855f7;
+  border-radius: 12px;
+  padding: 0.75rem !important;
+  
+  &:hover {
+    background: #ddd6fe;
+    border-color: #9333ea;
+  }
+}
+
+
+.dayContent {
+  width: 100%;
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
-.saveButton {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
+.dayType {
+  font-size: 0.7rem;
   font-weight: 600;
-  transition: background-color 0.2s;
-
-  &:hover:not(:disabled) {
-    background: #218838;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+  color: #1f2937;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.deleteButton {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background: #c82333;
-  }
+.dayDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
 }
 
-.cancelButton {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background: #5a6268;
-  }
-}
-
-.submitSection {
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e0e0e0;
-  text-align: center;
-
-  h3 {
-    margin-bottom: 0.5rem;
-  }
-}
-
-.submitInfo {
-  color: #666;
-  margin-bottom: 1rem;
-  font-size: 0.95rem;
-}
-
-.submitButton {
-  background: #0070f3;
-  color: white;
-  border: none;
-  padding: 0.75rem 2rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: background-color 0.2s;
-
-  &:hover:not(:disabled) {
-    background: #0051cc;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+.dayDetailItem {
+  font-size: 0.7rem;
+  color: #4b5563;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .legend {
   margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e0e0e0;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ddd;
+}
 
-  h4 {
-    margin-bottom: 1rem;
-    color: #000000;
-    font-weight: 600;
-  }
+.legend h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
 }
 
 .legendItems {
@@ -436,37 +255,236 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-
-  span {
-    color: #000000;
-    font-weight: 500;
-  }
 }
 
 .legendColor {
   width: 20px;
   height: 20px;
-  border-radius: 0.25rem;
-  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
 
-  &.draft {
-    background: #ffc107; // Yellow (matches status badge)
+.legendRegular {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.legendPto {
+  background: #fff3e0;
+  border-color: #ff9800;
+}
+
+.legendSick {
+  background: #fce4ec;
+  border-color: #e91e63;
+}
+
+.legendTravel {
+  background: #fce4ec;
+  border-color: #e91e63;
+}
+
+.legendHoliday {
+  background: #f3e5f5;
+  border-color: #9c27b0;
+}
+
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.modalDate {
+  color: #666;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #333;
+
+  input[type="radio"] {
+    cursor: pointer;
+  }
+}
+
+.input {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: #007bff;
+  }
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #333;
+
+  input[type="checkbox"] {
+    cursor: pointer;
+  }
+}
+
+.infoText {
+  color: #666;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin: 0;
+}
+
+.modalActions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.saveButton,
+.deleteButton,
+.cancelButton {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  flex: 1;
+  min-width: 100px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.saveButton {
+  background: #007bff;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #0056b3;
+  }
+}
+
+.deleteButton {
+  background: #dc3545;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #c82333;
+  }
+}
+
+.cancelButton {
+  background: #6c757d;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #5a6268;
+  }
+}
+
+.submitSection {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.submitInfo {
+  margin: 0;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.submitButton {
+  padding: 0.75rem 2rem;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #218838;
   }
 
-  &.submitted {
-    background: #87ceeb; // Light blue (matches status badge)
-  }
-
-  &.approved {
-    background: #28a745; // Green (matches status badge)
-  }
-
-  &.rejected {
-    background: #dc3545; // Red (matches status badge)
-  }
-
-  &.paid {
-    background: #007bff; // Blue (matches status badge)
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 
