@@ -167,6 +167,8 @@
   font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;
+  min-width: 100px;
+  text-align: center;
 
   &.admin {
     background-color: #dc3545;

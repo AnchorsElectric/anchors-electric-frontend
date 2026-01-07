@@ -39,7 +39,7 @@ export default function EmployeeLayout({
       // Default to profile if path doesn't match
       setActiveTab('profile');
     }
-  }, [pathname]);
+  }, [pathname, hasEmployeeProfile]);
 
   const checkEmployeeProfile = async () => {
     try {
@@ -59,12 +59,13 @@ export default function EmployeeLayout({
         if (user.employee && user.employee !== null && user.employee !== undefined) {
           setHasEmployeeProfile(true);
         } else {
-          // User doesn't have employee profile, redirect to dashboard
-          router.push('/dashboard');
+          // User doesn't have employee profile - allow access but show limited tabs
+          setHasEmployeeProfile(false);
         }
       }
     } catch (err) {
-      router.push('/dashboard');
+      // Don't redirect on error - allow user to stay on employee pages
+      setHasEmployeeProfile(false);
     } finally {
       setLoading(false);
     }
@@ -94,10 +95,6 @@ export default function EmployeeLayout({
     );
   }
 
-  if (!hasEmployeeProfile) {
-    return null;
-  }
-
   return (
     <div className={styles.employeeContainer}>
       <div className={styles.employeeHeader}>
@@ -113,18 +110,22 @@ export default function EmployeeLayout({
         >
           Profile
         </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'time-entries' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('time-entries')}
-        >
-          Time Entries
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'pay-periods' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('pay-periods')}
-        >
-          Pay Period History
-        </button>
+        {hasEmployeeProfile && (
+          <>
+            <button
+              className={`${styles.tab} ${activeTab === 'time-entries' ? styles.activeTab : ''}`}
+              onClick={() => handleTabClick('time-entries')}
+            >
+              Time Entries
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'pay-periods' ? styles.activeTab : ''}`}
+              onClick={() => handleTabClick('pay-periods')}
+            >
+              Pay Period History
+            </button>
+          </>
+        )}
       </div>
       <div className={styles.content}>
         {children}

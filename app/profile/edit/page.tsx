@@ -160,7 +160,7 @@ export default function EditProfilePage() {
           confirmPassword: '',
         });
         setTimeout(() => {
-          router.push('/dashboard?profileUpdated=true');
+          router.push('/employee/profile');
         }, 2000);
       } else {
         setError(response.error || 'Failed to change password');
@@ -210,7 +210,7 @@ export default function EditProfilePage() {
       if (response.success) {
         setSuccess('Profile has been updated successfully!');
         setTimeout(() => {
-          router.push('/dashboard?profileUpdated=true');
+          router.push('/employee/profile');
         }, 2000);
       } else {
         setError(response.error || 'Failed to update profile');
@@ -442,7 +442,7 @@ export default function EditProfilePage() {
           <div className={styles.actions}>
             <button
               type="button"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/employee/profile')}
               className={styles.cancelButton}
               disabled={loading || changingPassword}
             >

@@ -57,7 +57,7 @@ export default function AdminLayout({
           if (hasEmployeeProfile) {
             router.push('/employee/profile');
           } else {
-            router.push('/dashboard');
+            router.push('/employee/profile');
           }
         }
       }

@@ -26,6 +26,15 @@
   margin-bottom: 1rem;
 }
 
+.success {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  border: 1px solid #c3e6cb;
+}
+
 .calendarHeader {
   display: flex;
   align-items: center;
@@ -277,6 +286,48 @@
   word-break: break-word;
 }
 
+.summarySection {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.summaryTitle {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.summaryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.summaryLabel {
+  font-weight: 500;
+  color: #666;
+}
+
+.summaryValue {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #333;
+}
+
 .legend {
   margin-top: 2rem;
   padding-top: 1.5rem;
@@ -371,8 +422,34 @@
 
 .modalDate {
   color: #666;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   font-size: 0.9rem;
+}
+
+.sameAsLastButtonContainer {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.sameAsLastButton {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #333;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
 }
 
 .form {
@@ -399,6 +476,13 @@
   gap: 0.75rem;
 }
 
+.disabledHint {
+  font-size: 0.85rem;
+  color: #999;
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
 .radioLabel {
   display: flex;
   align-items: center;
@@ -409,6 +493,16 @@
 
   input[type="radio"] {
     cursor: pointer;
+    
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  &:has(input[type="radio"]:disabled) {
+    cursor: not-allowed;
+    opacity: 0.7;
   }
 }
 
@@ -603,6 +697,98 @@
 
   &:hover:not(:disabled) {
     background: #218838;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.confirmModal {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.confirmModalHeader {
+  margin-bottom: 1.5rem;
+}
+
+.confirmModalTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #dc3545;
+  margin: 0;
+}
+
+.confirmModalBody {
+  margin-bottom: 2rem;
+}
+
+.confirmModalMessage {
+  font-size: 1rem;
+  color: #333;
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+
+  strong {
+    color: #dc3545;
+  }
+}
+
+.confirmModalSubMessage {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirmModalActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.confirmButton {
+  padding: 0.75rem 1.5rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 120px;
+
+  &:hover:not(:disabled) {
+    background: #c82333;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.cancelConfirmButton {
+  padding: 0.75rem 1.5rem;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 120px;
+
+  &:hover:not(:disabled) {
+    background: #5a6268;
   }
 
   &:disabled {

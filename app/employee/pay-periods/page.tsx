@@ -15,6 +15,7 @@ interface TimeEntry {
   hasPerDiem: boolean; // For backward compatibility, derived from perDiem
   perDiem?: number; // Numeric value: 0, 0.75, or 1
   sickDay: boolean;
+  rotationDay?: boolean;
   isTravelDay: boolean;
   isPTO: boolean;
   isHoliday: boolean;
@@ -120,6 +121,7 @@ export default function EmployeePayPeriodsPage() {
     if (entry.isPTO) return 'PTO';
     if (entry.isHoliday) return 'Holiday';
     if (entry.sickDay) return 'Sick Day';
+    if (entry.rotationDay) return 'Rotation Day';
     if (entry.isTravelDay) return 'Travel Day';
     const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
     if (!entry.startTime && !entry.endTime && perDiemValue > 0) return 'Per Diem Only';

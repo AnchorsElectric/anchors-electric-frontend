@@ -39,6 +39,7 @@ export default function EditProfilePage() {
   const [projects, setProjects] = useState<Array<{ id: string; name: string; clientName: string }>>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
   const [updatingProject, setUpdatingProject] = useState(false);
+  const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -94,9 +95,16 @@ export default function EditProfilePage() {
           },
         });
         
-        if (user.employee?.currentProjectId) {
-          setCurrentProjectId(user.employee.currentProjectId);
+        // Check if user has an employee profile
+        if (user.employee) {
+          setHasEmployeeProfile(true);
+          if (user.employee.currentProjectId) {
+            setCurrentProjectId(user.employee.currentProjectId);
+          } else {
+            setCurrentProjectId('');
+          }
         } else {
+          setHasEmployeeProfile(false);
           setCurrentProjectId('');
         }
       } else {
@@ -487,30 +495,32 @@ export default function EditProfilePage() {
             </div>
           </div>
 
-          {/* Current Project Section */}
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Current Project</h2>
-            <div className={styles.fields}>
-              <div className={styles.field}>
-                <label htmlFor="currentProject">Current Project</label>
-                <select
-                  id="currentProject"
-                  value={currentProjectId}
-                  onChange={handleProjectChange}
-                  disabled={updatingProject || loading}
-                  className={styles.select}
-                >
-                  <option value="">No Project Assigned</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name} - {project.clientName}
-                    </option>
-                  ))}
-                </select>
-                {updatingProject && <p className={styles.helpText}>Updating...</p>}
+          {/* Current Project Section - Only show if user has employee profile */}
+          {hasEmployeeProfile && (
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>Current Project</h2>
+              <div className={styles.fields}>
+                <div className={styles.field}>
+                  <label htmlFor="currentProject">Current Project</label>
+                  <select
+                    id="currentProject"
+                    value={currentProjectId}
+                    onChange={handleProjectChange}
+                    disabled={updatingProject || loading}
+                    className={styles.select}
+                  >
+                    <option value="">No Project Assigned</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name} - {project.clientName}
+                      </option>
+                    ))}
+                  </select>
+                  {updatingProject && <p className={styles.helpText}>Updating...</p>}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className={styles.actions}>
             <button

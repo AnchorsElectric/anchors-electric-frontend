@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
         const isUserAdmin = (response.data as any).isAdmin || false;
         setIsAdmin(isUserAdmin);
         if (!isUserAdmin) {
-          router.push('/dashboard');
+          router.push('/employee/profile');
         }
       }
     } catch (err) {
@@ -183,10 +183,10 @@ export default function AdminUsersPage() {
                     <td>
                       {user.employee && user.employee !== null ? (
                         <span className={styles.hasEmployeeProfile}>
-                          ✓ {user.employee.paymentType}
+                          ✓ Active
                         </span>
                       ) : (
-                        <span className={styles.noEmployeeProfile}>✗ None</span>
+                        <span className={styles.noEmployeeProfile}>✗ Not Created</span>
                       )}
                     </td>
                     <td>

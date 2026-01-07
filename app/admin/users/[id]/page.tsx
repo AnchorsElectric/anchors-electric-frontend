@@ -50,11 +50,21 @@ export default function UserDetailPage() {
     paymentType: 'HOURLY' | 'SALARY';
     hourlyRate?: number;
     salaryAmount?: number;
+    currentProject?: {
+      id: string;
+      name: string;
+      clientName: string;
+    };
   } | null>(null);
   const [employeePaymentType, setEmployeePaymentType] = useState<'HOURLY' | 'SALARY'>('HOURLY');
   const [employeeHourlyRate, setEmployeeHourlyRate] = useState('');
   const [employeeSalaryAmount, setEmployeeSalaryAmount] = useState('');
+  const [employeeProjectId, setEmployeeProjectId] = useState<string>('');
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; clientName: string }>>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [savingEmployee, setSavingEmployee] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     middleName: '',
@@ -85,6 +95,7 @@ export default function UserDetailPage() {
     checkAdminStatus();
     loadUser();
     loadEmployeeProfile();
+    loadProjects();
   }, [router, userId]);
 
   const checkAdminStatus = async () => {
@@ -94,7 +105,7 @@ export default function UserDetailPage() {
         const isUserAdmin = (response.data as any).isAdmin || false;
         setIsAdmin(isUserAdmin);
         if (!isUserAdmin) {
-          router.push('/dashboard');
+          router.push('/employee/profile');
         }
       }
     } catch (err) {
@@ -178,6 +189,21 @@ export default function UserDetailPage() {
     }
   };
 
+  const loadProjects = async () => {
+    try {
+      setLoadingProjects(true);
+      const response = await apiClient.getProjects();
+      if (response.success && response.data) {
+        const projectsData = (response.data as any).projects || [];
+        setProjects(projectsData);
+      }
+    } catch (err: any) {
+      // Silently fail - projects are optional
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
   const loadEmployeeProfile = async () => {
     try {
       const response = await apiClient.getEmployeeProfile(userId);
@@ -196,16 +222,21 @@ export default function UserDetailPage() {
         }
         if (employee.currentProject) {
           profile.currentProject = employee.currentProject;
+          setEmployeeProjectId(employee.currentProject.id);
+        } else {
+          setEmployeeProjectId('');
         }
         setEmployeeProfile(profile);
         setEmployeePaymentType(employee.paymentType || 'HOURLY');
       } else {
         // Employee profile doesn't exist yet, that's okay
         setEmployeeProfile(null);
+        setEmployeeProjectId('');
       }
         } catch (err: any) {
           // 404 means no employee profile exists yet, which is fine
           setEmployeeProfile(null);
+          setEmployeeProjectId('');
         }
   };
 
@@ -231,6 +262,9 @@ export default function UserDetailPage() {
         data.hourlyRate = parseFloat(employeeHourlyRate);
       } else {
         data.salaryAmount = parseFloat(employeeSalaryAmount);
+      }
+      if (employeeProjectId) {
+        data.currentProjectId = employeeProjectId;
       }
 
       const response = await apiClient.createEmployeeProfile(userId, data);
@@ -270,6 +304,11 @@ export default function UserDetailPage() {
         data.hourlyRate = parseFloat(employeeHourlyRate);
       } else {
         data.salaryAmount = parseFloat(employeeSalaryAmount);
+      }
+      if (employeeProjectId) {
+        data.currentProjectId = employeeProjectId;
+      } else {
+        data.currentProjectId = null;
       }
 
       const response = await apiClient.updateEmployeeProfile(userId, data);
@@ -398,32 +437,37 @@ export default function UserDetailPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>User Details</h1>
         <div className={styles.headerActions}>
-          {!isEditing && (
-            <>
-              <button onClick={() => setIsEditing(true)} className={styles.editButton}>
-                Edit User
-              </button>
-              {!employeeProfile ? (
-                <button onClick={() => {
-                  setEmployeePaymentType('HOURLY');
-                  setEmployeeHourlyRate('');
-                  setEmployeeSalaryAmount('');
-                  setShowEmployeeModal(true);
-                }} className={styles.createEmployeeButton}>
-                  Create Employee Profile
-                </button>
-              ) : (
-                <button onClick={() => {
-                  setEmployeePaymentType(employeeProfile.paymentType);
-                  setEmployeeHourlyRate(employeeProfile.hourlyRate?.toString() || '');
-                  setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
-                  setShowEmployeeModal(true);
-                }} className={styles.editEmployeeButton}>
-                  Edit Employee Profile
-                </button>
+              {!isEditing && (
+                <>
+                  <button onClick={() => setIsEditing(true)} className={styles.editButton}>
+                    Edit User
+                  </button>
+                  {!employeeProfile ? (
+                    <button onClick={() => {
+                      setEmployeePaymentType('HOURLY');
+                      setEmployeeHourlyRate('');
+                      setEmployeeSalaryAmount('');
+                      setEmployeeProjectId('');
+                      setShowEmployeeModal(true);
+                    }} className={styles.createEmployeeButton}>
+                      Create Employee Profile
+                    </button>
+                  ) : (
+                    <button onClick={() => {
+                      setEmployeePaymentType(employeeProfile.paymentType);
+                      setEmployeeHourlyRate(employeeProfile.hourlyRate?.toString() || '');
+                      setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
+                      setEmployeeProjectId(employeeProfile.currentProject?.id || '');
+                      setShowEmployeeModal(true);
+                    }} className={styles.editEmployeeButton}>
+                      Edit Employee Profile
+                    </button>
+                  )}
+                  <button onClick={() => setShowDeleteModal(true)} className={styles.deleteButton}>
+                    Delete User
+                  </button>
+                </>
               )}
-            </>
-          )}
           <button onClick={() => router.push('/admin/users')} className={styles.backButton}>
             ← Back to Users
           </button>
@@ -910,6 +954,23 @@ export default function UserDetailPage() {
                   />
                 </div>
               )}
+              <div className={styles.field}>
+                <label htmlFor="employeeProject">Project (Optional)</label>
+                <select
+                  id="employeeProject"
+                  value={employeeProjectId}
+                  onChange={(e) => setEmployeeProjectId(e.target.value)}
+                  className={styles.input}
+                  disabled={savingEmployee || loadingProjects}
+                >
+                  <option value="">No Project Assigned</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name} - {project.clientName}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className={styles.modalFooter}>
               <button
@@ -925,6 +986,73 @@ export default function UserDetailPage() {
                 disabled={savingEmployee}
               >
                 {savingEmployee ? 'Saving...' : employeeProfile ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Delete User</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !deleting && setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Are you sure you want to delete <strong>{user.firstName} {user.lastName}</strong> ({user.email})?
+              </p>
+              <p className={styles.warning}>
+                This action cannot be undone. This will permanently delete:
+              </p>
+              <ul className={styles.deleteList}>
+                <li>User account</li>
+                <li>Employee profile (if exists)</li>
+                <li>Emergency contacts</li>
+                <li>All time entries</li>
+                <li>All pay periods</li>
+              </ul>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.deleteButton}
+                onClick={async () => {
+                  setDeleting(true);
+                  setError('');
+                  try {
+                    const response = await apiClient.deleteUser(userId);
+                    if (response.success) {
+                      setSuccess('User deleted successfully');
+                      setTimeout(() => {
+                        router.push('/admin/users');
+                      }, 1500);
+                    } else {
+                      setError(response.error || 'Failed to delete user');
+                      setDeleting(false);
+                    }
+                  } catch (err: any) {
+                    setError(err.response?.data?.error || 'Failed to delete user');
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete User'}
               </button>
             </div>
           </div>

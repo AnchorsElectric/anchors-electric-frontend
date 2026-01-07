@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import styles from './time-entries.module.scss';
 
-type EntryType = 'regular' | 'pto' | 'sick' | 'travel' | 'holiday' | 'none';
+type EntryType = 'regular' | 'pto' | 'sick' | 'rotation' | 'travel' | 'holiday' | 'none';
 
 interface TimeEntry {
   id: string;
@@ -17,6 +17,7 @@ interface TimeEntry {
   hasPerDiem: boolean; // For backward compatibility, derived from perDiem
   perDiem?: number; // Numeric value: 0, 0.75, or 1
   sickDay: boolean;
+  rotationDay?: boolean;
   isTravelDay: boolean;
   isPTO: boolean;
   isHoliday: boolean;
@@ -52,13 +53,18 @@ export default function TimeEntriesPage() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
+  const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
-    const diff = today.getDate() - day;
+    // Calculate days to subtract to get to Monday (0 = Sunday, 1 = Monday, etc.)
+    // If Sunday (0), go back 6 days. Otherwise, go back (day - 1) days.
+    const diff = today.getDate() - (day === 0 ? 6 : day - 1);
     const weekStart = new Date(today.setDate(diff));
     weekStart.setHours(0, 0, 0, 0);
     return weekStart;
@@ -80,12 +86,18 @@ export default function TimeEntriesPage() {
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
         const user = (response.data as any).user;
-        if (user?.employee?.currentProjectId) {
-          setCurrentProjectId(user.employee.currentProjectId);
+        if (user?.employee) {
+          setHasEmployeeProfile(true);
+          if (user.employee.currentProjectId) {
+            setCurrentProjectId(user.employee.currentProjectId);
+          }
+        } else {
+          setHasEmployeeProfile(false);
         }
       }
     } catch (err: any) {
       // Silently fail - current project is optional
+      setHasEmployeeProfile(false);
     }
   };
 
@@ -131,11 +143,21 @@ export default function TimeEntriesPage() {
         setTimeEntries(entries);
       } else {
         setTimeEntries([]);
-        setError(response.error || 'Failed to load time entries. Calendar will still work.');
+        // If error is about employee profile not found, show a helpful message
+        if (response.error?.includes('Employee profile not found')) {
+          setError('Employee profile not found. Please contact an administrator to create your employee profile.');
+        } else {
+          setError(response.error || 'Failed to load time entries. Calendar will still work.');
+        }
       }
     } catch (err: any) {
       setTimeEntries([]);
-      setError(err.response?.data?.error || err.message || 'Failed to load time entries. Calendar will still work.');
+      // If error is about employee profile not found, show a helpful message
+      if (err.response?.data?.error?.includes('Employee profile not found') || err.response?.status === 404) {
+        setError('Employee profile not found. Please contact an administrator to create your employee profile.');
+      } else {
+        setError(err.response?.data?.error || err.message || 'Failed to load time entries. Calendar will still work.');
+      }
     } finally {
       setLoading(false);
     }
@@ -170,7 +192,18 @@ export default function TimeEntriesPage() {
     setter(adjustTime(time, -30));
   };
 
+  const isWeekend = (date: string): boolean => {
+    const dateObj = new Date(date + 'T00:00:00');
+    const day = dateObj.getDay();
+    return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+  };
+
   const handleDateClick = (date: string) => {
+    if (!hasEmployeeProfile) {
+      setError('Employee profile not found. Please contact an administrator to create your employee profile before adding time entries.');
+      return;
+    }
+
     const existingEntry = timeEntries.find(entry => entry.date === date);
     
     if (existingEntry) {
@@ -180,36 +213,66 @@ export default function TimeEntriesPage() {
         return;
       }
       
-      setEditingEntry(existingEntry);
-      if (existingEntry.isPTO) {
-        setEntryType('pto');
-        setStartTime(existingEntry.startTime || '09:00');
-        setEndTime(existingEntry.endTime || '17:30');
-      } else if (existingEntry.isHoliday) {
-        setEntryType('holiday');
-        setStartTime(existingEntry.startTime || '09:00');
-        setEndTime(existingEntry.endTime || '17:30');
-      } else if (existingEntry.sickDay) {
-        setEntryType('sick');
-        setStartTime(existingEntry.startTime || '09:00');
-        setEndTime(existingEntry.endTime || '17:30');
-      } else if (existingEntry.isTravelDay) {
-        setEntryType('travel');
-        setStartTime(existingEntry.startTime || '09:00');
-        setEndTime(existingEntry.endTime || '17:30');
-      } else if (!existingEntry.startTime && !existingEntry.endTime && !existingEntry.totalHours && (existingEntry.perDiem !== undefined && existingEntry.perDiem > 0 || existingEntry.hasPerDiem)) {
-        setEntryType('none');
-        setStartTime('09:00');
-        setEndTime('17:00');
+      // Check if weekend and entry type is not allowed on weekends
+      if (isWeekend(date)) {
+        if (existingEntry.isPTO || existingEntry.isHoliday || existingEntry.sickDay || existingEntry.rotationDay) {
+          setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
+          setEntryType('regular');
+        } else {
+          setEditingEntry(existingEntry);
+          if (existingEntry.isTravelDay) {
+            setEntryType('travel');
+            setStartTime(existingEntry.startTime || '09:00');
+            setEndTime(existingEntry.endTime || '17:30');
+          } else if (!existingEntry.startTime && !existingEntry.endTime && !existingEntry.totalHours && (existingEntry.perDiem !== undefined && existingEntry.perDiem > 0 || existingEntry.hasPerDiem)) {
+            setEntryType('none');
+            setStartTime('09:00');
+            setEndTime('17:00');
+          } else {
+            setEntryType('regular');
+            setStartTime(existingEntry.startTime || '09:00');
+            setEndTime(existingEntry.endTime || '17:30');
+          }
+          const perDiemValue = existingEntry.perDiem !== undefined ? existingEntry.perDiem : (existingEntry.hasPerDiem ? 1 : 0);
+          setHasPerDiem(perDiemValue > 0);
+          setSelectedProject(existingEntry.projectId || currentProjectId || '');
+        }
       } else {
-        setEntryType('regular');
-        setStartTime(existingEntry.startTime || '09:00');
-        setEndTime(existingEntry.endTime || '17:30');
+        setEditingEntry(existingEntry);
+        if (existingEntry.isPTO) {
+          setEntryType('pto');
+          setStartTime(existingEntry.startTime || '09:00');
+          setEndTime(existingEntry.endTime || '17:30');
+        } else if (existingEntry.isHoliday) {
+          setEntryType('holiday');
+          setStartTime(existingEntry.startTime || '09:00');
+          setEndTime(existingEntry.endTime || '17:30');
+        } else if (existingEntry.sickDay) {
+          setEntryType('sick');
+          setStartTime(existingEntry.startTime || '09:00');
+          setEndTime(existingEntry.endTime || '17:30');
+        } else if (existingEntry.rotationDay) {
+          setEntryType('rotation');
+          setStartTime(existingEntry.startTime || '09:00');
+          setEndTime(existingEntry.endTime || '17:30');
+        } else if (existingEntry.isTravelDay) {
+          setEntryType('travel');
+          setStartTime(existingEntry.startTime || '09:00');
+          setEndTime(existingEntry.endTime || '17:30');
+        } else if (!existingEntry.startTime && !existingEntry.endTime && !existingEntry.totalHours && (existingEntry.perDiem !== undefined && existingEntry.perDiem > 0 || existingEntry.hasPerDiem)) {
+          setEntryType('none');
+          setStartTime('09:00');
+          setEndTime('17:00');
+        } else {
+          setEntryType('regular');
+          setStartTime(existingEntry.startTime || '09:00');
+          setEndTime(existingEntry.endTime || '17:30');
+        }
+        // Convert perDiem numeric value back to boolean for checkbox
+        const perDiemValue = existingEntry.perDiem !== undefined ? existingEntry.perDiem : (existingEntry.hasPerDiem ? 1 : 0);
+        setHasPerDiem(perDiemValue > 0);
+        setSelectedProject(existingEntry.projectId || currentProjectId || '');
       }
-      // Convert perDiem numeric value back to boolean for checkbox
-      const perDiemValue = existingEntry.perDiem !== undefined ? existingEntry.perDiem : (existingEntry.hasPerDiem ? 1 : 0);
-      setHasPerDiem(perDiemValue > 0);
-      setSelectedProject(existingEntry.projectId || currentProjectId || '');
     } else {
       // Check if date is in a locked pay period
       if (isDateLocked(date)) {
@@ -230,6 +293,198 @@ export default function TimeEntriesPage() {
     setShowModal(true);
   };
 
+  const getLastLoggedEntry = async (): Promise<TimeEntry | null> => {
+    try {
+      // Get entries from a wide date range (last 3 months) to find the most recent entry
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 3);
+      
+      const startYear = startDate.getFullYear();
+      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+      const startDay = String(startDate.getDate()).padStart(2, '0');
+      const startDateStr = `${startYear}-${startMonth}-${startDay}`;
+      
+      const endYear = endDate.getFullYear();
+      const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+      const endDay = String(endDate.getDate()).padStart(2, '0');
+      const endDateStr = `${endYear}-${endMonth}-${endDay}`;
+      
+      const response = await apiClient.getTimeEntries({ startDate: startDateStr, endDate: endDateStr });
+      if (response.success && response.data) {
+        const entries = (response.data as any).timeEntries || [];
+        if (entries.length === 0) return null;
+        
+        // Filter out the current selected date and sort by date descending
+        const filteredEntries = selectedDate 
+          ? entries.filter((entry: TimeEntry) => entry.date !== selectedDate)
+          : entries;
+        
+        if (filteredEntries.length === 0) return null;
+        
+        // Sort by date descending and get the most recent entry
+        const sortedEntries = [...filteredEntries].sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        return sortedEntries[0];
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const handleSameAsLastDay = async () => {
+    if (!selectedDate) return;
+    
+    try {
+      setError('');
+      setLoading(true);
+      const lastEntry = await getLastLoggedEntry();
+      
+      if (!lastEntry) {
+        setError('No previous entries found.');
+        setLoading(false);
+        return;
+      }
+      
+      // Determine entry type and set form values
+      // Check special day types first (order matters - check more specific types first)
+      let entryTypeValue: EntryType = 'regular';
+      let startTimeValue = lastEntry.startTime || '09:00';
+      let endTimeValue = lastEntry.endTime || '17:30';
+      let hasPerDiemValue = false;
+      
+      if (lastEntry.isHoliday) {
+        entryTypeValue = 'holiday';
+        startTimeValue = '09:00';
+        endTimeValue = '17:30';
+        const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
+        hasPerDiemValue = perDiemValue > 0;
+      } else if (lastEntry.sickDay) {
+        entryTypeValue = 'sick';
+        startTimeValue = '09:00';
+        endTimeValue = '17:30';
+        const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
+        hasPerDiemValue = perDiemValue > 0;
+      } else if (lastEntry.rotationDay === true) {
+        entryTypeValue = 'rotation';
+        startTimeValue = '09:00';
+        endTimeValue = '17:30';
+        const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
+        hasPerDiemValue = perDiemValue > 0;
+      } else if (lastEntry.isPTO) {
+        entryTypeValue = 'pto';
+        startTimeValue = '09:00';
+        endTimeValue = '17:30';
+      } else if (lastEntry.isTravelDay) {
+        entryTypeValue = 'travel';
+        startTimeValue = '09:00';
+        endTimeValue = '17:30';
+        const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
+        hasPerDiemValue = perDiemValue > 0;
+      } else if (!lastEntry.startTime && !lastEntry.endTime && !lastEntry.totalHours && (lastEntry.perDiem !== undefined && lastEntry.perDiem > 0 || lastEntry.hasPerDiem)) {
+        entryTypeValue = 'none';
+        startTimeValue = '09:00';
+        endTimeValue = '17:00';
+        hasPerDiemValue = true;
+      } else {
+        entryTypeValue = 'regular';
+        startTimeValue = lastEntry.startTime || '09:00';
+        endTimeValue = lastEntry.endTime || '17:30';
+        const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
+        hasPerDiemValue = perDiemValue > 0;
+      }
+      
+      // Check if weekend and trying to save restricted entry types
+      if (isWeekend(selectedDate)) {
+        if (entryTypeValue === 'holiday' || entryTypeValue === 'sick' || entryTypeValue === 'pto' || entryTypeValue === 'rotation') {
+          setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Prepare entry data
+      const entryData: any = {
+        date: selectedDate,
+        hasPerDiem: false,
+        sickDay: false,
+        rotationDay: false,
+        isTravelDay: false,
+        isPTO: false,
+        isHoliday: false,
+      };
+
+      if (entryTypeValue === 'regular') {
+        entryData.startTime = startTimeValue;
+        entryData.endTime = endTimeValue;
+        entryData.hasPerDiem = hasPerDiemValue;
+      } else if (entryTypeValue === 'pto') {
+        entryData.isPTO = true;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
+      } else if (entryTypeValue === 'holiday') {
+        entryData.isHoliday = true;
+        entryData.hasPerDiem = hasPerDiemValue;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
+      } else if (entryTypeValue === 'sick') {
+        entryData.sickDay = true;
+        entryData.hasPerDiem = hasPerDiemValue;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
+      } else if (entryTypeValue === 'rotation') {
+        entryData.rotationDay = true;
+        entryData.hasPerDiem = hasPerDiemValue;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
+      } else if (entryTypeValue === 'travel') {
+        entryData.isTravelDay = true;
+        entryData.hasPerDiem = hasPerDiemValue;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
+      } else if (entryTypeValue === 'none') {
+        entryData.hasPerDiem = true;
+        entryData.startTime = null;
+        entryData.endTime = null;
+      }
+
+      if (lastEntry.projectId || currentProjectId) {
+        entryData.projectId = lastEntry.projectId || currentProjectId;
+      }
+
+      // Save the entry
+      let response;
+      if (editingEntry) {
+        response = await apiClient.updateTimeEntry(editingEntry.id, entryData);
+      } else {
+        response = await apiClient.createTimeEntry(entryData);
+      }
+
+      if (response.success) {
+        await loadTimeEntries();
+        setShowModal(false);
+        setSelectedDate(null);
+        setEditingEntry(null);
+        setEntryType('regular');
+        setStartTime('09:00');
+        setEndTime('17:30');
+        setHasPerDiem(false);
+        setSelectedProject('');
+      } else {
+        setError(response.error || 'Failed to save time entry');
+      }
+    } catch (error: any) {
+      setError(error.response?.data?.error || error.message || 'Failed to save time entry');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedDate) return;
 
@@ -237,10 +492,20 @@ export default function TimeEntriesPage() {
       setError('');
       setLoading(true);
 
+      // Check if weekend and trying to save restricted entry types
+      if (isWeekend(selectedDate)) {
+        if (entryType === 'holiday' || entryType === 'sick' || entryType === 'pto' || entryType === 'rotation') {
+          setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const entryData: any = {
         date: selectedDate,
         hasPerDiem: false,
         sickDay: false,
+        rotationDay: false,
         isTravelDay: false,
         isPTO: false,
         isHoliday: false,
@@ -264,6 +529,16 @@ export default function TimeEntriesPage() {
         entryData.hasPerDiem = hasPerDiem;
         entryData.startTime = '09:00';
         entryData.endTime = '17:30';
+      } else if (entryType === 'rotation') {
+        entryData.rotationDay = true;
+        entryData.hasPerDiem = hasPerDiem;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
+        // Explicitly ensure other day types are false
+        entryData.sickDay = false;
+        entryData.isTravelDay = false;
+        entryData.isPTO = false;
+        entryData.isHoliday = false;
       } else if (entryType === 'travel') {
         entryData.isTravelDay = true;
         entryData.hasPerDiem = hasPerDiem;
@@ -280,7 +555,7 @@ export default function TimeEntriesPage() {
       } else {
         entryData.projectId = null;
       }
-      
+
       let response;
       if (editingEntry) {
         response = await apiClient.updateTimeEntry(editingEntry.id, entryData);
@@ -320,7 +595,6 @@ export default function TimeEntriesPage() {
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || err.message || 'Failed to delete time entry';
-      console.error('Delete error:', errorMessage, err.response?.data);
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -360,6 +634,70 @@ export default function TimeEntriesPage() {
     });
   };
 
+  const getCurrentWeekEntries = (): TimeEntry[] => {
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+    const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
+    
+    return timeEntries.filter(entry => {
+      return entry.date >= weekStartStr && entry.date <= weekEndStr;
+    });
+  };
+
+  const calculateWeekSummary = () => {
+    const weekEntries = getCurrentWeekEntries();
+    let totalHours = 0;
+    let totalHolidayHours = 0;
+    let totalSickHours = 0;
+    let totalRotationHours = 0;
+    let totalTravelHours = 0;
+    let totalPtoHours = 0;
+    let totalPerDiem = 0;
+    
+    weekEntries.forEach(entry => {
+      // Count hours by type
+      if (entry.isHoliday) {
+        totalHolidayHours += 8;
+      } else if (entry.sickDay) {
+        totalSickHours += 8;
+      } else if (entry.rotationDay) {
+        totalRotationHours += 8;
+      } else if (entry.isTravelDay) {
+        totalTravelHours += 8;
+      } else if (entry.isPTO) {
+        totalPtoHours += 8;
+      } else {
+        // Regular hours
+        if (entry.totalHours !== null && entry.totalHours !== undefined) {
+          totalHours += entry.totalHours;
+        }
+      }
+      
+      // Sum per diem values
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      totalPerDiem += perDiemValue;
+    });
+    
+    // Calculate overtime (hours over 40)
+    const overtimeHours = totalHours > 40 ? totalHours - 40 : 0;
+    
+    return {
+      totalHours: Math.round(totalHours * 100) / 100,
+      overtimeHours: Math.round(overtimeHours * 100) / 100,
+      totalHolidayHours: Math.round(totalHolidayHours * 100) / 100,
+      totalSickHours: Math.round(totalSickHours * 100) / 100,
+      totalRotationHours: Math.round(totalRotationHours * 100) / 100,
+      totalTravelHours: Math.round(totalTravelHours * 100) / 100,
+      totalPtoHours: Math.round(totalPtoHours * 100) / 100,
+      totalPerDiem: Math.round(totalPerDiem * 100) / 100,
+    };
+  };
+
   const getCurrentWeekPayPeriod = (): { id: string; status: string } | null => {
     const weekStart = new Date(currentWeekStart);
     weekStart.setHours(0, 0, 0, 0);
@@ -386,7 +724,7 @@ export default function TimeEntriesPage() {
     return null;
   };
 
-  const handleSubmitPayPeriod = async () => {
+  const handleSubmitPayPeriod = () => {
     const draftEntries = getCurrentWeekDraftEntries();
     
     if (draftEntries.length === 0) {
@@ -394,6 +732,14 @@ export default function TimeEntriesPage() {
       return;
     }
 
+    // Show confirmation modal
+    setShowSubmitConfirm(true);
+  };
+
+  const confirmSubmitPayPeriod = async () => {
+    setShowSubmitConfirm(false);
+    const draftEntries = getCurrentWeekDraftEntries();
+    
     try {
       setSubmitting(true);
       setError('');
@@ -456,7 +802,8 @@ export default function TimeEntriesPage() {
 
       await loadTimeEntries();
       
-      alert('Pay period submitted successfully for admin review!');
+      setSuccess('Pay period has been submitted successfully');
+      setTimeout(() => setSuccess(''), 5000);
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to submit pay period');
     } finally {
@@ -526,6 +873,20 @@ export default function TimeEntriesPage() {
         details.push('Per Diem');
       }
       return { type: 'SICK', details };
+    }
+    
+    if (entry.rotationDay === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
+        details.push('Per Diem');
+      }
+      return { type: 'ROTATION', details };
     }
     
     if (entry.isTravelDay === true) {
@@ -610,7 +971,7 @@ export default function TimeEntriesPage() {
     return days;
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   const formatWeekRange = () => {
@@ -649,6 +1010,7 @@ export default function TimeEntriesPage() {
         <h1 className={styles.title}>Time Entries</h1>
         
         {error && <div className={styles.error}>{error}</div>}
+        {success && <div className={styles.success}>{success}</div>}
 
         <div className={styles.calendarHeader}>
           <button onClick={handlePrevWeek} className={styles.monthButton}>‹</button>
@@ -698,6 +1060,63 @@ export default function TimeEntriesPage() {
           </div>
         </div>
 
+        {(() => {
+          const summary = calculateWeekSummary();
+          return (
+            <div className={styles.summarySection}>
+              <h3 className={styles.summaryTitle}>Week Summary</h3>
+              <div className={styles.summaryGrid}>
+                <div className={styles.summaryItem}>
+                  <span className={styles.summaryLabel}>Total Regular Hours:</span>
+                  <span className={styles.summaryValue}>{summary.totalHours.toFixed(2)}h</span>
+                </div>
+                {summary.overtimeHours > 0 && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Overtime Hours:</span>
+                    <span className={styles.summaryValue}>{summary.overtimeHours.toFixed(2)}h</span>
+                  </div>
+                )}
+                {summary.totalHolidayHours > 0 && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Holiday Hours:</span>
+                    <span className={styles.summaryValue}>{summary.totalHolidayHours.toFixed(2)}h</span>
+                  </div>
+                )}
+                {summary.totalSickHours > 0 && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Sick Hours:</span>
+                    <span className={styles.summaryValue}>{summary.totalSickHours.toFixed(2)}h</span>
+                  </div>
+                )}
+                {summary.totalRotationHours > 0 && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Rotation Hours:</span>
+                    <span className={styles.summaryValue}>{summary.totalRotationHours.toFixed(2)}h</span>
+                  </div>
+                )}
+                {summary.totalTravelHours > 0 && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Travel Hours:</span>
+                    <span className={styles.summaryValue}>{summary.totalTravelHours.toFixed(2)}h</span>
+                  </div>
+                )}
+                {summary.totalPtoHours > 0 && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>PTO Hours:</span>
+                    <span className={styles.summaryValue}>{summary.totalPtoHours.toFixed(2)}h</span>
+                  </div>
+                )}
+                {summary.totalPerDiem > 0 && (
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Total Per Diem:</span>
+                    <span className={styles.summaryValue}>${(summary.totalPerDiem * 50).toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         <div className={styles.legend}>
           <h4>Legend</h4>
           <div className={styles.legendItems}>
@@ -740,6 +1159,18 @@ export default function TimeEntriesPage() {
               })}
             </p>
 
+            {!editingEntry && (
+              <div className={styles.sameAsLastButtonContainer}>
+                <button
+                  type="button"
+                  onClick={handleSameAsLastDay}
+                  className={styles.sameAsLastButton}
+                >
+                  Same as Last Day
+                </button>
+              </div>
+            )}
+
             <div className={styles.form}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>Entry Type</label>
@@ -760,34 +1191,6 @@ export default function TimeEntriesPage() {
                     <input
                       type="radio"
                       name="entryType"
-                      value="pto"
-                      checked={entryType === 'pto'}
-                      onChange={(e) => {
-                        setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
-                      }}
-                    />
-                    PTO
-                  </label>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name="entryType"
-                      value="sick"
-                      checked={entryType === 'sick'}
-                      onChange={(e) => {
-                        setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
-                      }}
-                    />
-                    Sick Day
-                  </label>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name="entryType"
                       value="travel"
                       checked={entryType === 'travel'}
                       onChange={(e) => {
@@ -802,15 +1205,17 @@ export default function TimeEntriesPage() {
                     <input
                       type="radio"
                       name="entryType"
-                      value="holiday"
-                      checked={entryType === 'holiday'}
+                      value="rotation"
+                      checked={entryType === 'rotation'}
+                      disabled={selectedDate ? isWeekend(selectedDate) : false}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
                         setStartTime('09:00');
                         setEndTime('17:30');
                       }}
                     />
-                    Holiday
+                    Rotation Day
+                    {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
                   </label>
                   <label className={styles.radioLabel}>
                     <input
@@ -823,6 +1228,54 @@ export default function TimeEntriesPage() {
                       }}
                     />
                     Per Diem Only
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="entryType"
+                      value="pto"
+                      checked={entryType === 'pto'}
+                      disabled={selectedDate ? isWeekend(selectedDate) : false}
+                      onChange={(e) => {
+                        setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
+                      }}
+                    />
+                    PTO
+                    {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="entryType"
+                      value="sick"
+                      checked={entryType === 'sick'}
+                      disabled={selectedDate ? isWeekend(selectedDate) : false}
+                      onChange={(e) => {
+                        setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
+                      }}
+                    />
+                    Sick Day
+                    {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="entryType"
+                      value="holiday"
+                      checked={entryType === 'holiday'}
+                      disabled={selectedDate ? isWeekend(selectedDate) : false}
+                      onChange={(e) => {
+                        setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
+                      }}
+                    />
+                    Holiday
+                    {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
                   </label>
                 </div>
               </div>
@@ -1024,6 +1477,41 @@ export default function TimeEntriesPage() {
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitConfirm && (
+        <div className={styles.modalOverlay} onClick={() => setShowSubmitConfirm(false)}>
+          <div className={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmModalHeader}>
+              <h2 className={styles.confirmModalTitle}>⚠️ Confirm Submission</h2>
+            </div>
+            <div className={styles.confirmModalBody}>
+              <p className={styles.confirmModalMessage}>
+                Once you submit this pay period, you will <strong>not be able to add more days or update any entries</strong> for this week.
+              </p>
+              <p className={styles.confirmModalSubMessage}>
+                The pay period will be sent to admin for review. You can only edit entries if the pay period is rejected.
+              </p>
+            </div>
+            <div className={styles.confirmModalActions}>
+              <button
+                onClick={confirmSubmitPayPeriod}
+                disabled={submitting}
+                className={styles.confirmButton}
+              >
+                {submitting ? 'Submitting...' : 'Yes, Submit'}
+              </button>
+              <button
+                onClick={() => setShowSubmitConfirm(false)}
+                disabled={submitting}
+                className={styles.cancelConfirmButton}
+              >
+                No, Cancel
+              </button>
             </div>
           </div>
         </div>

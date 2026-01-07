@@ -166,6 +166,8 @@
   font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;
+  min-width: 100px;
+  text-align: center;
 
   &.admin {
     background-color: #dc3545;
@@ -284,6 +286,27 @@
   }
 }
 
+.deleteButton {
+  padding: 0.75rem 1.5rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #c82333;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
 .noEmployeeProfile {
   padding: 1rem;
   background-color: #f8f9fa;
@@ -358,6 +381,27 @@
 
 .modalBody {
   padding: 1.5rem;
+
+  p {
+    margin: 0 0 1rem 0;
+    color: #000000;
+  }
+}
+
+.warning {
+  color: #dc3545;
+  font-weight: 600;
+  margin-top: 1rem !important;
+}
+
+.deleteList {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  color: #000000;
+
+  li {
+    margin: 0.5rem 0;
+  }
 }
 
 .modalFooter {

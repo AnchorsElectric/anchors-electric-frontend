@@ -30,9 +30,16 @@ function LoginContent() {
     try {
       const response = await apiClient.login(email, password);
       if (response.success && response.data) {
-        const { token } = response.data as { token: string };
+        const { token, user } = response.data as { token: string; user: any };
         setAuthToken(token);
-        router.push('/dashboard');
+        
+        // Redirect based on user role
+        if (user?.role === 'ADMIN') {
+          router.push('/admin/profile');
+        } else {
+          // All non-admin users go to employee profile page
+          router.push('/employee/profile');
+        }
       } else {
         setError(response.error || 'Login failed');
       }

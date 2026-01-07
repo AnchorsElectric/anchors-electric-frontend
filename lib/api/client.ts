@@ -161,6 +161,11 @@ class ApiClient {
     return response.data;
   }
 
+  async deleteUser(userId: string) {
+    const response = await this.client.delete<ApiResponse>(`/admin/users/${userId}`);
+    return response.data;
+  }
+
   async updateUserById(userId: string, data: {
     firstName?: string;
     middleName?: string | null;

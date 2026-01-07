@@ -20,18 +20,9 @@ function DashboardContent() {
       return;
     }
 
+    // Immediately redirect - don't show dashboard
     checkAdminStatus();
-
-    if (searchParams.get('profileUpdated') === 'true') {
-      setShowSuccess(true);
-      // Clear the query parameter
-      router.replace('/dashboard', { scroll: false });
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 5000);
-    }
-  }, [router, searchParams]);
+  }, [router]);
 
   const checkAdminStatus = async () => {
     try {
@@ -48,7 +39,8 @@ function DashboardContent() {
         // Redirect based on role
         if (isUserAdmin) {
           router.push('/admin/profile');
-        } else if (hasEmployeeProfile) {
+        } else {
+          // Always redirect non-admin users to employee profile page (even without employee profile)
           router.push('/employee/profile');
         }
       }
@@ -64,37 +56,19 @@ function DashboardContent() {
     router.push('/login');
   };
 
+  // Always redirect - never show dashboard content
   if (loading) {
-    return null; // Will redirect based on role
-  }
-
-  // Regular user dashboard
-  return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <h1 className={styles.title}>Dashboard</h1>
-        <p className={styles.subtitle}>Welcome to Anchors Electric</p>
-        
-        {showSuccess && (
-          <div className={styles.success}>
-            Profile has been updated successfully!
-          </div>
-        )}
-
-        <div className={styles.actions}>
-          <a href="/profile/edit" className={styles.editButton}>
-            Edit Profile
-          </a>
-          <a href="/time-entries" className={styles.editButton}>
-            Time Entries
-          </a>
-          <button onClick={handleLogout} className={styles.logoutButton}>
-            Logout
-          </button>
+    return (
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Loading...</h1>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Should not reach here as checkAdminStatus redirects
+  return null;
 }
 
 export default function DashboardPage() {

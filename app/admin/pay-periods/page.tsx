@@ -15,6 +15,7 @@ interface TimeEntry {
   hasPerDiem: boolean; // For backward compatibility, derived from perDiem
   perDiem?: number; // Numeric value: 0, 0.75, or 1
   sickDay: boolean;
+  rotationDay?: boolean;
   isTravelDay: boolean;
   isPTO: boolean;
   isHoliday: boolean;
@@ -29,9 +30,15 @@ interface PayPeriod {
   employeeId: string;
   startDate: string;
   endDate: string;
-  totalHours: number | null;
-  totalOvertimeHours: number | null;
+  totalHours: number | null; // Only regular hours
+  totalOvertimeHours: number | null; // Overtime from regular hours only
+  totalHolidayHours?: number | null;
+  totalSickHours?: number | null;
+  totalRotationHours?: number | null;
+  totalTravelHours?: number | null;
+  totalPtoHours?: number | null;
   totalSickDays: number;
+  totalRotationDays?: number;
   totalPto: number;
   totalPerDiem: number;
   status: string;
@@ -140,6 +147,7 @@ export default function AdminPayPeriodsPage() {
     if (entry.isPTO) return 'PTO';
     if (entry.isHoliday) return 'Holiday';
     if (entry.sickDay) return 'Sick Day';
+    if (entry.rotationDay) return 'Rotation Day';
     if (entry.isTravelDay) return 'Travel Day';
     const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
     if (!entry.startTime && !entry.endTime && perDiemValue > 0) return 'Per Diem Only';
@@ -274,20 +282,14 @@ export default function AdminPayPeriodsPage() {
                       {formatDate(period.startDate)} - {formatDate(period.endDate)}
                     </div>
                     <div className={styles.summary}>
-                      {period.totalHours !== null ? `${period.totalHours.toFixed(2)} hrs` : '0 hrs'}
+                      {period.totalHours !== null ? `${period.totalHours.toFixed(2)} regular hrs` : '0 hrs'}
                       {period.totalOvertimeHours !== null && period.totalOvertimeHours > 0 && (
                         <span className={styles.overtime}>
                           {' '}({period.totalOvertimeHours.toFixed(2)} OT)
                         </span>
                       )}
-                      {period.totalSickDays > 0 && (
-                        <span className={styles.sickDays}> • {period.totalSickDays} sick day(s)</span>
-                      )}
-                      {period.totalPto > 0 && (
-                        <span className={styles.pto}> • {period.totalPto} PTO day(s)</span>
-                      )}
                       {period.totalPerDiem > 0 && (
-                        <span className={styles.perDiem}> • {Number(period.totalPerDiem).toFixed(2)} per diem day(s)</span>
+                        <span className={styles.perDiem}> • ${(Number(period.totalPerDiem) * 50).toFixed(2)} per diem</span>
                       )}
                     </div>
                   </div>
@@ -371,7 +373,7 @@ export default function AdminPayPeriodsPage() {
                                 )}
                                 {(entry.perDiem !== undefined && entry.perDiem > 0 || entry.hasPerDiem) && (
                                   <div className={styles.entryPerDiem}>
-                                    Per Diem: {entry.perDiem !== undefined ? Number(entry.perDiem).toFixed(2) : 'Yes'}
+                                    Per Diem: ${entry.perDiem !== undefined ? (Number(entry.perDiem) * 50).toFixed(2) : '50.00'}
                                   </div>
                                 )}
                               </div>
@@ -385,24 +387,46 @@ export default function AdminPayPeriodsPage() {
                       <h3>Period Information</h3>
                       <div className={styles.infoGrid}>
                         <div className={styles.infoItem}>
-                          <label>Total Hours:</label>
+                          <label>Total Regular Hours:</label>
                           <span>{period.totalHours !== null ? period.totalHours.toFixed(2) : '0.00'}</span>
                         </div>
                         <div className={styles.infoItem}>
                           <label>Overtime Hours:</label>
                           <span>{period.totalOvertimeHours !== null ? period.totalOvertimeHours.toFixed(2) : '0.00'}</span>
                         </div>
+                        {(period.totalHolidayHours !== undefined && period.totalHolidayHours !== null && period.totalHolidayHours > 0) && (
+                          <div className={styles.infoItem}>
+                            <label>Holiday Hours:</label>
+                            <span>{period.totalHolidayHours.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(period.totalSickHours !== undefined && period.totalSickHours !== null && period.totalSickHours > 0) && (
+                          <div className={styles.infoItem}>
+                            <label>Sick Hours:</label>
+                            <span>{period.totalSickHours.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(period.totalRotationHours !== undefined && period.totalRotationHours !== null && period.totalRotationHours > 0) && (
+                          <div className={styles.infoItem}>
+                            <label>Rotation Hours:</label>
+                            <span>{period.totalRotationHours.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(period.totalTravelHours !== undefined && period.totalTravelHours !== null && period.totalTravelHours > 0) && (
+                          <div className={styles.infoItem}>
+                            <label>Travel Hours:</label>
+                            <span>{period.totalTravelHours.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(period.totalPtoHours !== undefined && period.totalPtoHours !== null && period.totalPtoHours > 0) && (
+                          <div className={styles.infoItem}>
+                            <label>PTO Hours:</label>
+                            <span>{period.totalPtoHours.toFixed(2)}</span>
+                          </div>
+                        )}
                         <div className={styles.infoItem}>
-                          <label>Sick Days:</label>
-                          <span>{period.totalSickDays}</span>
-                        </div>
-                        <div className={styles.infoItem}>
-                          <label>PTO Days:</label>
-                          <span>{period.totalPto}</span>
-                        </div>
-                        <div className={styles.infoItem}>
-                          <label>Per Diem Days:</label>
-                          <span>{Number(period.totalPerDiem).toFixed(2)}</span>
+                          <label>Total Per Diem:</label>
+                          <span>${(Number(period.totalPerDiem) * 50).toFixed(2)}</span>
                         </div>
                         {period.submittedAt && (
                           <div className={styles.infoItem}>
