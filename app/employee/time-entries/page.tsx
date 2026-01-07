@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import styles from './time-entries.module.scss';
 
-type EntryType = 'regular' | 'pto' | 'sick' | 'travel' | 'holiday';
+type EntryType = 'regular' | 'pto' | 'sick' | 'travel' | 'holiday' | 'none';
 
 interface TimeEntry {
   id: string;
@@ -14,16 +14,29 @@ interface TimeEntry {
   startTime: string | null;
   endTime: string | null;
   totalHours: number | null;
-  hasPerDiem: boolean;
+  hasPerDiem: boolean; // For backward compatibility, derived from perDiem
+  perDiem?: number; // Numeric value: 0, 0.75, or 1
   sickDay: boolean;
   isTravelDay: boolean;
   isPTO: boolean;
   isHoliday: boolean;
   payPeriodId?: string | null;
+  projectId?: string | null;
   payPeriod?: {
     id: string;
     status: string;
   } | null;
+  project?: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  address: string;
+  clientName: string;
 }
 
 export default function TimeEntriesPage() {
@@ -32,15 +45,17 @@ export default function TimeEntriesPage() {
   const [showModal, setShowModal] = useState(false);
   const [entryType, setEntryType] = useState<EntryType>('regular');
   const [startTime, setStartTime] = useState<string>('09:00');
-  const [endTime, setEndTime] = useState<string>('17:00');
+  const [endTime, setEndTime] = useState<string>('17:30');
   const [hasPerDiem, setHasPerDiem] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [projects, setProjects] = useState<Project[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<string>('');
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    // Get the start of the current week (Sunday)
     const today = new Date();
     const day = today.getDay();
     const diff = today.getDate() - day;
@@ -55,15 +70,47 @@ export default function TimeEntriesPage() {
       router.push('/login');
       return;
     }
+    loadProfile();
+    loadProjects();
     loadTimeEntries();
   }, [router, currentWeekStart]);
+
+  const loadProfile = async () => {
+    try {
+      const response = await apiClient.getProfile();
+      if (response.success && response.data) {
+        const user = (response.data as any).user;
+        if (user?.employee?.currentProjectId) {
+          setCurrentProjectId(user.employee.currentProjectId);
+        }
+      }
+    } catch (err: any) {
+      // Silently fail - current project is optional
+    }
+  };
+
+  const loadProjects = async () => {
+    try {
+      const response = await apiClient.getProjects();
+      if (response.success && response.data) {
+        const projectsData = (response.data as any).projects || [];
+        setProjects(projectsData);
+      }
+    } catch (err: any) {
+      // Silently fail - projects are optional
+      // Don't let this error redirect to login
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        // Just ignore - projects are optional for employees
+        return;
+      }
+    }
+  };
 
   const loadTimeEntries = async () => {
     try {
       setLoading(true);
       setError('');
       
-      // Get start and end of current week (Sunday to Saturday)
       const weekStart = new Date(currentWeekStart);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
@@ -83,12 +130,10 @@ export default function TimeEntriesPage() {
         const entries = (response.data as any).timeEntries || [];
         setTimeEntries(entries);
       } else {
-        // If API call fails, still show calendar with empty entries
         setTimeEntries([]);
         setError(response.error || 'Failed to load time entries. Calendar will still work.');
       }
     } catch (err: any) {
-      // If error occurs, still show calendar with empty entries
       setTimeEntries([]);
       setError(err.response?.data?.error || err.message || 'Failed to load time entries. Calendar will still work.');
     } finally {
@@ -96,32 +141,89 @@ export default function TimeEntriesPage() {
     }
   };
 
+  const isDateLocked = (date: string): boolean => {
+    const entry = timeEntries.find(e => e.date === date);
+    if (!entry || !entry.payPeriodId || !entry.payPeriod) {
+      return false;
+    }
+    const status = entry.payPeriod.status;
+    // Lock if SUBMITTED, APPROVED, or PAID, allow editing if DRAFT or REJECTED
+    return status === 'SUBMITTED' || status === 'APPROVED' || status === 'PAID';
+  };
+
+  const adjustTime = (time: string, minutes: number): string => {
+    const [hours, mins] = time.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, mins, 0, 0);
+    date.setMinutes(date.getMinutes() + minutes);
+    
+    const newHours = String(date.getHours()).padStart(2, '0');
+    const newMins = String(date.getMinutes()).padStart(2, '0');
+    return `${newHours}:${newMins}`;
+  };
+
+  const incrementTime = (time: string, setter: (value: string) => void) => {
+    setter(adjustTime(time, 30));
+  };
+
+  const decrementTime = (time: string, setter: (value: string) => void) => {
+    setter(adjustTime(time, -30));
+  };
+
   const handleDateClick = (date: string) => {
     const existingEntry = timeEntries.find(entry => entry.date === date);
     
     if (existingEntry) {
+      // Check if entry is locked (SUBMITTED, APPROVED, or PAID)
+      if (isDateLocked(date)) {
+        setError('This entry is part of a submitted/approved/paid pay period and cannot be edited');
+        return;
+      }
+      
       setEditingEntry(existingEntry);
-      // Determine entry type - check in order of priority
       if (existingEntry.isPTO) {
         setEntryType('pto');
+        setStartTime(existingEntry.startTime || '09:00');
+        setEndTime(existingEntry.endTime || '17:30');
       } else if (existingEntry.isHoliday) {
         setEntryType('holiday');
+        setStartTime(existingEntry.startTime || '09:00');
+        setEndTime(existingEntry.endTime || '17:30');
       } else if (existingEntry.sickDay) {
         setEntryType('sick');
+        setStartTime(existingEntry.startTime || '09:00');
+        setEndTime(existingEntry.endTime || '17:30');
       } else if (existingEntry.isTravelDay) {
         setEntryType('travel');
+        setStartTime(existingEntry.startTime || '09:00');
+        setEndTime(existingEntry.endTime || '17:30');
+      } else if (!existingEntry.startTime && !existingEntry.endTime && !existingEntry.totalHours && (existingEntry.perDiem !== undefined && existingEntry.perDiem > 0 || existingEntry.hasPerDiem)) {
+        setEntryType('none');
+        setStartTime('09:00');
+        setEndTime('17:00');
       } else {
         setEntryType('regular');
+        setStartTime(existingEntry.startTime || '09:00');
+        setEndTime(existingEntry.endTime || '17:30');
       }
-      setStartTime(existingEntry.startTime || '09:00');
-      setEndTime(existingEntry.endTime || '17:00');
-      setHasPerDiem(existingEntry.hasPerDiem || false);
+      // Convert perDiem numeric value back to boolean for checkbox
+      const perDiemValue = existingEntry.perDiem !== undefined ? existingEntry.perDiem : (existingEntry.hasPerDiem ? 1 : 0);
+      setHasPerDiem(perDiemValue > 0);
+      setSelectedProject(existingEntry.projectId || currentProjectId || '');
     } else {
+      // Check if date is in a locked pay period
+      if (isDateLocked(date)) {
+        setError('This date is part of a submitted/approved/paid pay period and cannot be edited');
+        return;
+      }
+      
       setEditingEntry(null);
       setEntryType('regular');
       setStartTime('09:00');
-      setEndTime('17:00');
+      setEndTime('17:30');
       setHasPerDiem(false);
+      // Set default project to current project if available
+      setSelectedProject(currentProjectId || '');
     }
     
     setSelectedDate(date);
@@ -144,31 +246,39 @@ export default function TimeEntriesPage() {
         isHoliday: false,
       };
 
-      // Set values based on entry type
       if (entryType === 'regular') {
         entryData.startTime = startTime;
         entryData.endTime = endTime;
         entryData.hasPerDiem = hasPerDiem;
       } else if (entryType === 'pto') {
         entryData.isPTO = true;
-        entryData.startTime = null;
-        entryData.endTime = null;
-        // No other fields
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
       } else if (entryType === 'holiday') {
         entryData.isHoliday = true;
-        entryData.startTime = null;
-        entryData.endTime = null;
-        // No other fields
+        entryData.hasPerDiem = hasPerDiem;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
       } else if (entryType === 'sick') {
         entryData.sickDay = true;
         entryData.hasPerDiem = hasPerDiem;
-        entryData.startTime = null;
-        entryData.endTime = null;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
       } else if (entryType === 'travel') {
         entryData.isTravelDay = true;
         entryData.hasPerDiem = hasPerDiem;
+        entryData.startTime = '09:00';
+        entryData.endTime = '17:30';
+      } else if (entryType === 'none') {
+        entryData.hasPerDiem = true;
         entryData.startTime = null;
         entryData.endTime = null;
+      }
+
+      if (selectedProject) {
+        entryData.projectId = selectedProject;
+      } else {
+        entryData.projectId = null;
       }
       
       let response;
@@ -182,7 +292,6 @@ export default function TimeEntriesPage() {
         setShowModal(false);
         setSelectedDate(null);
         setEditingEntry(null);
-        // Reload entries to get the updated data
         await loadTimeEntries();
       } else {
         setError(response.error || 'Failed to save time entry');
@@ -210,7 +319,9 @@ export default function TimeEntriesPage() {
         setError(response.error || 'Failed to delete time entry');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to delete time entry');
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to delete time entry';
+      console.error('Delete error:', errorMessage, err.response?.data);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -225,25 +336,54 @@ export default function TimeEntriesPage() {
   };
 
   const getCurrentWeekDraftEntries = (): TimeEntry[] => {
-    // Get week start and end dates as strings for comparison
     const weekStart = new Date(currentWeekStart);
     weekStart.setHours(0, 0, 0, 0);
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
     
-    // Convert to date strings for comparison
     const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
     const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
     
     return timeEntries.filter(entry => {
-      // Filter out entries that are already in a pay period
-      if (entry.payPeriodId) return false;
-      
-      // Compare date strings directly (YYYY-MM-DD format)
-      // This avoids timezone issues
+      // Include entries that are either:
+      // 1. Not in any pay period (draft)
+      // 2. In a DRAFT pay period (can be resubmitted)
+      // 3. In a REJECTED pay period (will be converted to DRAFT when edited)
+      if (entry.payPeriodId && entry.payPeriod) {
+        const status = entry.payPeriod.status;
+        if (status !== 'DRAFT' && status !== 'REJECTED') {
+          return false;
+        }
+      }
       return entry.date >= weekStartStr && entry.date <= weekEndStr;
     });
+  };
+
+  const getCurrentWeekPayPeriod = (): { id: string; status: string } | null => {
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+    const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
+    
+    // Find any entry in this week that has a pay period
+    const weekEntry = timeEntries.find(entry => {
+      if (!entry.payPeriodId || !entry.payPeriod) return false;
+      return entry.date >= weekStartStr && entry.date <= weekEndStr;
+    });
+    
+    if (weekEntry && weekEntry.payPeriod) {
+      return {
+        id: weekEntry.payPeriod.id,
+        status: weekEntry.payPeriod.status,
+      };
+    }
+    
+    return null;
   };
 
   const handleSubmitPayPeriod = async () => {
@@ -258,7 +398,6 @@ export default function TimeEntriesPage() {
       setSubmitting(true);
       setError('');
 
-      // Get the week start and end dates
       const weekStart = new Date(currentWeekStart);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
@@ -273,34 +412,48 @@ export default function TimeEntriesPage() {
       const endDay = String(weekEnd.getDate()).padStart(2, '0');
       const endDate = `${endYear}-${endMonth}-${endDay}`;
 
-      // Create pay period
-      const createResponse = await apiClient.createPayPeriod({ startDate, endDate });
-      
-      if (!createResponse.success || !createResponse.data) {
-        throw new Error(createResponse.error || 'Failed to create pay period');
+      // Check if there's an existing DRAFT pay period for this week
+      const existingPayPeriod = getCurrentWeekPayPeriod();
+      let payPeriodId: string;
+
+      if (existingPayPeriod && existingPayPeriod.status === 'DRAFT') {
+        // Use existing DRAFT pay period
+        payPeriodId = existingPayPeriod.id;
+        
+        // Update time entries
+        const timeEntryIds = draftEntries.map(entry => entry.id);
+        const updateResponse = await apiClient.updatePayPeriod(payPeriodId, { timeEntryIds });
+        
+        if (!updateResponse.success) {
+          throw new Error(updateResponse.error || 'Failed to associate time entries with pay period');
+        }
+      } else {
+        // Create new pay period
+        const createResponse = await apiClient.createPayPeriod({ startDate, endDate });
+        
+        if (!createResponse.success || !createResponse.data) {
+          throw new Error(createResponse.error || 'Failed to create pay period');
+        }
+
+        payPeriodId = (createResponse.data as any).payPeriod?.id;
+        if (!payPeriodId) {
+          throw new Error('Pay period ID not returned');
+        }
+
+        const timeEntryIds = draftEntries.map(entry => entry.id);
+        const updateResponse = await apiClient.updatePayPeriod(payPeriodId, { timeEntryIds });
+        
+        if (!updateResponse.success) {
+          throw new Error(updateResponse.error || 'Failed to associate time entries with pay period');
+        }
       }
 
-      const payPeriodId = (createResponse.data as any).payPeriod?.id;
-      if (!payPeriodId) {
-        throw new Error('Pay period ID not returned');
-      }
-
-      // Associate time entries with the pay period
-      const timeEntryIds = draftEntries.map(entry => entry.id);
-      const updateResponse = await apiClient.updatePayPeriod(payPeriodId, { timeEntryIds });
-      
-      if (!updateResponse.success) {
-        throw new Error(updateResponse.error || 'Failed to associate time entries with pay period');
-      }
-
-      // Submit the pay period
       const submitResponse = await apiClient.submitPayPeriod(payPeriodId);
       
       if (!submitResponse.success) {
         throw new Error(submitResponse.error || 'Failed to submit pay period');
       }
 
-      // Reload time entries to reflect the changes
       await loadTimeEntries();
       
       alert('Pay period submitted successfully for admin review!');
@@ -315,10 +468,19 @@ export default function TimeEntriesPage() {
     const entry = getEntryForDate(date);
     if (!entry) return styles.day;
     
-    if (entry.isPTO) return styles.dayPto;
-    if (entry.isHoliday) return styles.dayHoliday;
-    if (entry.sickDay) return styles.daySick;
-    if (entry.isTravelDay) return styles.dayTravel;
+    if (entry.payPeriodId && entry.payPeriod) {
+      const status = entry.payPeriod.status;
+      if (status === 'PAID') {
+        return styles.dayPaid;
+      } else if (status === 'APPROVED') {
+        return styles.dayApproved;
+      } else if (status === 'REJECTED') {
+        return styles.dayRejected;
+      } else if (status === 'SUBMITTED') {
+        return styles.daySubmitted;
+      }
+    }
+    
     return styles.dayRegular;
   };
 
@@ -328,32 +490,63 @@ export default function TimeEntriesPage() {
     
     const details: string[] = [];
     
-    // Check entry type flags in priority order
-    // IMPORTANT: Check special types BEFORE checking for regular hours
     if (entry.isPTO === true) {
-      return { type: 'PTO', details: [] };
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      return { type: 'PTO', details };
     }
     
     if (entry.isHoliday === true) {
-      return { type: 'HOLIDAY', details: [] };
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
+        details.push('Per Diem');
+      }
+      return { type: 'HOLIDAY', details };
     }
     
     if (entry.sickDay === true) {
-      if (entry.hasPerDiem === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
         details.push('Per Diem');
       }
       return { type: 'SICK', details };
     }
     
     if (entry.isTravelDay === true) {
-      if (entry.hasPerDiem === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
         details.push('Per Diem');
       }
       return { type: 'TRAVEL', details };
     }
     
-    // Regular hours entry - only reached if none of the special types above are true
-    // This means isPTO, isHoliday, sickDay, and isTravelDay are all false/undefined
+    const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+    if (!entry.startTime && !entry.endTime && !entry.totalHours && perDiemValue > 0) {
+      return { type: 'PER DIEM ONLY', details: [] };
+    }
+    
     if (entry.startTime && entry.endTime) {
       details.push(`${entry.startTime} - ${entry.endTime}`);
     }
@@ -373,7 +566,6 @@ export default function TimeEntriesPage() {
     const days = [];
     const weekStart = new Date(currentWeekStart);
     
-    // Render 7 days (Sunday to Saturday)
     for (let i = 0; i < 7; i++) {
       const currentDay = new Date(weekStart);
       currentDay.setDate(weekStart.getDate() + i);
@@ -466,20 +658,31 @@ export default function TimeEntriesPage() {
           <button onClick={handleNextWeek} className={styles.monthButton}>›</button>
         </div>
 
-        {getCurrentWeekDraftEntries().length > 0 && (
-          <div className={styles.submitSection}>
-            <p className={styles.submitInfo}>
-              You have {getCurrentWeekDraftEntries().length} draft {getCurrentWeekDraftEntries().length === 1 ? 'entry' : 'entries'} for this week.
-            </p>
-            <button 
-              onClick={handleSubmitPayPeriod} 
-              className={styles.submitButton}
-              disabled={submitting}
-            >
-              {submitting ? 'Submitting...' : 'Submit Week for Review'}
-            </button>
-          </div>
-        )}
+        {(() => {
+          const currentPayPeriod = getCurrentWeekPayPeriod();
+          const canSubmit = currentPayPeriod === null || 
+                           currentPayPeriod.status === 'DRAFT' || 
+                           currentPayPeriod.status === 'REJECTED';
+          const draftEntries = getCurrentWeekDraftEntries();
+          
+          if (canSubmit && draftEntries.length > 0) {
+            return (
+              <div className={styles.submitSection}>
+                <p className={styles.submitInfo}>
+                  You have {draftEntries.length} draft {draftEntries.length === 1 ? 'entry' : 'entries'} for this week.
+                </p>
+                <button 
+                  onClick={handleSubmitPayPeriod} 
+                  className={styles.submitButton}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Submitting...' : currentPayPeriod?.status === 'REJECTED' ? 'Resubmit Pay Period' : 'Submit Week for Review'}
+                </button>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <div className={styles.calendar}>
           <div className={styles.weekDays}>
@@ -500,23 +703,23 @@ export default function TimeEntriesPage() {
           <div className={styles.legendItems}>
             <div className={styles.legendItem}>
               <div className={`${styles.legendColor} ${styles.legendRegular}`}></div>
-              <span>Regular Hours</span>
+              <span>Draft Entries</span>
             </div>
             <div className={styles.legendItem}>
-              <div className={`${styles.legendColor} ${styles.legendPto}`}></div>
-              <span>PTO</span>
+              <div className={`${styles.legendColor} ${styles.legendSubmitted}`}></div>
+              <span>Submitted Entries</span>
             </div>
             <div className={styles.legendItem}>
-              <div className={`${styles.legendColor} ${styles.legendSick}`}></div>
-              <span>Sick Day</span>
+              <div className={`${styles.legendColor} ${styles.legendApproved}`}></div>
+              <span>Approved Entries</span>
             </div>
             <div className={styles.legendItem}>
-              <div className={`${styles.legendColor} ${styles.legendTravel}`}></div>
-              <span>Travel Day</span>
+              <div className={`${styles.legendColor} ${styles.legendRejected}`}></div>
+              <span>Rejected Entries</span>
             </div>
             <div className={styles.legendItem}>
-              <div className={`${styles.legendColor} ${styles.legendHoliday}`}></div>
-              <span>Holiday</span>
+              <div className={`${styles.legendColor} ${styles.legendPaid}`}></div>
+              <span>Paid Entries</span>
             </div>
           </div>
         </div>
@@ -561,6 +764,8 @@ export default function TimeEntriesPage() {
                       checked={entryType === 'pto'}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
                       }}
                     />
                     PTO
@@ -573,6 +778,8 @@ export default function TimeEntriesPage() {
                       checked={entryType === 'sick'}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
                       }}
                     />
                     Sick Day
@@ -585,6 +792,8 @@ export default function TimeEntriesPage() {
                       checked={entryType === 'travel'}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
                       }}
                     />
                     Travel Day
@@ -597,32 +806,106 @@ export default function TimeEntriesPage() {
                       checked={entryType === 'holiday'}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
                       }}
                     />
                     Holiday
                   </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="entryType"
+                      value="none"
+                      checked={entryType === 'none'}
+                      onChange={(e) => {
+                        setEntryType(e.target.value as EntryType);
+                      }}
+                    />
+                    Per Diem Only
+                  </label>
                 </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Project (Optional)</label>
+                <select
+                  value={selectedProject}
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                  className={styles.input}
+                >
+                  <option value="">No Project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name} - {project.clientName}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {entryType === 'regular' && (
                 <>
                   <div className={styles.formGroup}>
                     <label className={styles.label}>Start Time</label>
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className={styles.input}
-                    />
+                    <div className={styles.timeInputWrapper}>
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className={styles.timeInput}
+                        step="1800"
+                        lang="en-GB"
+                      />
+                      <div className={styles.timeButtonContainer}>
+                        <button
+                          type="button"
+                          onClick={() => incrementTime(startTime, setStartTime)}
+                          className={styles.timeButton}
+                          aria-label="Increase time by 30 minutes"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => decrementTime(startTime, setStartTime)}
+                          className={styles.timeButton}
+                          aria-label="Decrease time by 30 minutes"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div className={styles.formGroup}>
                     <label className={styles.label}>End Time</label>
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className={styles.input}
-                    />
+                    <div className={styles.timeInputWrapper}>
+                      <input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className={styles.timeInput}
+                        step="1800"
+                        lang="en-GB"
+                      />
+                      <div className={styles.timeButtonContainer}>
+                        <button
+                          type="button"
+                          onClick={() => incrementTime(endTime, setEndTime)}
+                          className={styles.timeButton}
+                          aria-label="Increase time by 30 minutes"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => decrementTime(endTime, setEndTime)}
+                          className={styles.timeButton}
+                          aria-label="Decrease time by 30 minutes"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div className={styles.formGroup}>
                     <label className={styles.checkboxLabel}>
@@ -633,6 +916,36 @@ export default function TimeEntriesPage() {
                       />
                       Per Diem
                     </label>
+                  </div>
+                </>
+              )}
+
+              {(entryType === 'sick' || entryType === 'holiday' || entryType === 'pto' || entryType === 'travel') && (
+                <>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Start Time</label>
+                    <input
+                      type="time"
+                      value={startTime}
+                      readOnly
+                      className={styles.input}
+                      style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>End Time</label>
+                    <input
+                      type="time"
+                      value={endTime}
+                      readOnly
+                      className={styles.input}
+                      style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <p className={styles.infoText}>
+                      <strong>Total Hours: 8 hours</strong>
+                    </p>
                   </div>
                 </>
               )}
@@ -663,12 +976,23 @@ export default function TimeEntriesPage() {
                 </div>
               )}
 
-              {(entryType === 'pto' || entryType === 'holiday') && (
+              {entryType === 'none' && (
                 <p className={styles.infoText}>
-                  {entryType === 'pto' 
-                    ? 'No additional information required for PTO entries.'
-                    : 'No additional information required for Holiday entries.'}
+                  Per diem will be automatically included for this entry.
                 </p>
+              )}
+
+              {entryType === 'holiday' && (
+                <div className={styles.formGroup}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={hasPerDiem}
+                      onChange={(e) => setHasPerDiem(e.target.checked)}
+                    />
+                    Per Diem
+                  </label>
+                </div>
               )}
 
               <div className={styles.modalActions}>

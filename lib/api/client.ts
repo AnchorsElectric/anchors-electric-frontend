@@ -41,10 +41,14 @@ class ApiClient {
       (response) => response,
       (error: AxiosError<ApiResponse>) => {
         if (error.response?.status === 401) {
-          // Unauthorized - clear token and redirect to login
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-            window.location.href = '/login';
+          // Only redirect if it's not a projects endpoint (employees can't access projects but shouldn't be logged out)
+          const url = error.config?.url || '';
+          if (!url.includes('/projects')) {
+            // Unauthorized - clear token and redirect to login
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('auth_token');
+              window.location.href = '/login';
+            }
           }
         }
         return Promise.reject(error);
@@ -134,6 +138,13 @@ class ApiClient {
     const response = await this.client.post<ApiResponse>('/profile/change-password', {
       currentPassword,
       newPassword,
+    });
+    return response.data;
+  }
+
+  async updateCurrentProject(currentProjectId: string | null) {
+    const response = await this.client.put<ApiResponse>('/profile/current-project', {
+      currentProjectId,
     });
     return response.data;
   }
@@ -231,6 +242,7 @@ class ApiClient {
     isTravelDay?: boolean;
     isPTO?: boolean;
     isHoliday?: boolean;
+    projectId?: string | null;
   }) {
     const response = await this.client.post<ApiResponse>('/time-entries', data);
     return response.data;
@@ -245,6 +257,7 @@ class ApiClient {
     isTravelDay?: boolean;
     isPTO?: boolean;
     isHoliday?: boolean;
+    projectId?: string | null;
   }) {
     const response = await this.client.put<ApiResponse>(`/time-entries/${id}`, data);
     return response.data;
@@ -288,6 +301,69 @@ class ApiClient {
 
   async deletePayPeriod(id: string) {
     const response = await this.client.delete<ApiResponse>(`/pay-periods/${id}`);
+    return response.data;
+  }
+
+  // Admin pay period methods
+  async getSubmittedPayPeriods(params?: { status?: string; employeeId?: string; startDate?: string; endDate?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.employeeId) queryParams.append('employeeId', params.employeeId);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    
+    const queryString = queryParams.toString();
+    const url = `/admin/pay-periods${queryString ? `?${queryString}` : ''}`;
+    const response = await this.client.get<ApiResponse>(url);
+    return response.data;
+  }
+
+  async approvePayPeriod(id: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/pay-periods/${id}/approve`);
+    return response.data;
+  }
+
+  async rejectPayPeriod(id: string, reason: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/pay-periods/${id}/reject`, { rejectionReason: reason });
+    return response.data;
+  }
+
+  async markPayPeriodAsPaid(id: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/pay-periods/${id}/mark-paid`);
+    return response.data;
+  }
+
+  // Project methods
+  async getProjects() {
+    const response = await this.client.get<ApiResponse>('/projects');
+    return response.data;
+  }
+
+  async getProjectById(id: string) {
+    const response = await this.client.get<ApiResponse>(`/projects/${id}`);
+    return response.data;
+  }
+
+  async createProject(data: {
+    name: string;
+    address: string;
+    clientName: string;
+  }) {
+    const response = await this.client.post<ApiResponse>('/projects', data);
+    return response.data;
+  }
+
+  async updateProject(id: string, data: {
+    name: string;
+    address: string;
+    clientName: string;
+  }) {
+    const response = await this.client.put<ApiResponse>(`/projects/${id}`, data);
+    return response.data;
+  }
+
+  async deleteProject(id: string) {
+    const response = await this.client.delete<ApiResponse>(`/projects/${id}`);
     return response.data;
   }
 

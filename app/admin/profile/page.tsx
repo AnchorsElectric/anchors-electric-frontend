@@ -36,6 +36,9 @@ export default function AdminProfilePage() {
     confirmPassword: '',
   });
   const [changingPassword, setChangingPassword] = useState(false);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; clientName: string }>>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string>('');
+  const [updatingProject, setUpdatingProject] = useState(false);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -45,7 +48,20 @@ export default function AdminProfilePage() {
     }
 
     loadProfile();
+    loadProjects();
   }, [router]);
+
+  const loadProjects = async () => {
+    try {
+      const response = await apiClient.getProjects();
+      if (response.success && response.data) {
+        const projectsData = (response.data as any).projects || [];
+        setProjects(projectsData);
+      }
+    } catch (err: any) {
+      // Silently fail - projects are optional
+    }
+  };
 
   const loadProfile = async () => {
     try {
@@ -77,6 +93,12 @@ export default function AdminProfilePage() {
             relationship: '',
           },
         });
+        
+        if (user.employee?.currentProjectId) {
+          setCurrentProjectId(user.employee.currentProjectId);
+        } else {
+          setCurrentProjectId('');
+        }
       } else {
         setError('Failed to load profile');
       }
@@ -114,6 +136,28 @@ export default function AdminProfilePage() {
       [name]: value,
     }));
     setError('');
+  };
+
+  const handleProjectChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newProjectId = e.target.value || null;
+    setUpdatingProject(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await apiClient.updateCurrentProject(newProjectId);
+      if (response.success) {
+        setCurrentProjectId(newProjectId || '');
+        setSuccess('Current project updated successfully!');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.error || 'Failed to update current project');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update current project');
+    } finally {
+      setUpdatingProject(false);
+    }
   };
 
   const isPasswordFormValid = () => {
@@ -191,17 +235,21 @@ export default function AdminProfilePage() {
         zipCode: formData.zipCode,
       };
 
-      // Add emergency contact if any fields are filled
-      if (formData.emergencyContact.firstName || 
-          formData.emergencyContact.lastName || 
-          formData.emergencyContact.phone || 
-          formData.emergencyContact.relationship) {
+      // Add emergency contact if all required fields are filled
+      if (formData.emergencyContact.firstName && 
+          formData.emergencyContact.firstName.trim() &&
+          formData.emergencyContact.lastName && 
+          formData.emergencyContact.lastName.trim() &&
+          formData.emergencyContact.phone && 
+          formData.emergencyContact.phone.trim() &&
+          formData.emergencyContact.relationship &&
+          formData.emergencyContact.relationship.trim()) {
         payload.emergencyContact = {
-          firstName: formData.emergencyContact.firstName,
-          lastName: formData.emergencyContact.lastName,
-          phone: formData.emergencyContact.phone,
-          email: formData.emergencyContact.email || null,
-          relationship: formData.emergencyContact.relationship,
+          firstName: formData.emergencyContact.firstName.trim(),
+          lastName: formData.emergencyContact.lastName.trim(),
+          phone: formData.emergencyContact.phone.trim(),
+          email: formData.emergencyContact.email?.trim() || null,
+          relationship: formData.emergencyContact.relationship.trim(),
         };
       }
 
@@ -435,6 +483,31 @@ export default function AdminProfilePage() {
                   placeholder="e.g., Spouse, Parent, Friend"
                   disabled={loading}
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Current Project Section */}
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Current Project</h2>
+            <div className={styles.fields}>
+              <div className={styles.field}>
+                <label htmlFor="currentProject">Current Project</label>
+                <select
+                  id="currentProject"
+                  value={currentProjectId}
+                  onChange={handleProjectChange}
+                  disabled={updatingProject || loading}
+                  className={styles.select}
+                >
+                  <option value="">No Project Assigned</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name} - {project.clientName}
+                    </option>
+                  ))}
+                </select>
+                {updatingProject && <p className={styles.helpText}>Updating...</p>}
               </div>
             </div>
           </div>

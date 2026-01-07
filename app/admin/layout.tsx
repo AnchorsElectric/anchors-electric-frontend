@@ -15,7 +15,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'profile'>('profile');
+  const [activeTab, setActiveTab] = useState<'users' | 'profile' | 'projects' | 'pay-periods'>('profile');
 
   useEffect(() => {
     const token = getAuthToken();
@@ -31,6 +31,10 @@ export default function AdminLayout({
     // Set active tab based on current path
     if (pathname?.startsWith('/admin/users')) {
       setActiveTab('users');
+    } else if (pathname?.startsWith('/admin/projects')) {
+      setActiveTab('projects');
+    } else if (pathname?.startsWith('/admin/pay-periods')) {
+      setActiveTab('pay-periods');
     } else if (pathname === '/admin/profile') {
       setActiveTab('profile');
     } else {
@@ -69,10 +73,14 @@ export default function AdminLayout({
     router.push('/login');
   };
 
-  const handleTabClick = (tab: 'users' | 'profile') => {
+  const handleTabClick = (tab: 'users' | 'profile' | 'projects' | 'pay-periods') => {
     setActiveTab(tab);
     if (tab === 'users') {
       router.push('/admin/users');
+    } else if (tab === 'projects') {
+      router.push('/admin/projects');
+    } else if (tab === 'pay-periods') {
+      router.push('/admin/pay-periods');
     } else {
       router.push('/admin/profile');
     }
@@ -110,6 +118,18 @@ export default function AdminLayout({
           onClick={() => handleTabClick('users')}
         >
           Manage Users
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'projects' ? styles.activeTab : ''}`}
+          onClick={() => handleTabClick('projects')}
+        >
+          Projects
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'pay-periods' ? styles.activeTab : ''}`}
+          onClick={() => handleTabClick('pay-periods')}
+        >
+          Pay Periods
         </button>
       </div>
       <div className={styles.content}>

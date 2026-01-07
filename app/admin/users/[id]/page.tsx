@@ -135,6 +135,39 @@ export default function UserDetailPage() {
             relationship: '',
           },
         });
+        
+        // If user has employee profile with current project, load it
+        if (userData.employee?.currentProject) {
+          const profile: any = {
+            paymentType: userData.employee.paymentType || 'HOURLY',
+            currentProject: userData.employee.currentProject,
+          };
+          if (userData.employee.hourlyRate) {
+            profile.hourlyRate = parseFloat(userData.employee.hourlyRate.toString());
+            setEmployeeHourlyRate(userData.employee.hourlyRate.toString());
+          }
+          if (userData.employee.salaryAmount) {
+            profile.salaryAmount = parseFloat(userData.employee.salaryAmount.toString());
+            setEmployeeSalaryAmount(userData.employee.salaryAmount.toString());
+          }
+          setEmployeeProfile(profile);
+          setEmployeePaymentType(userData.employee.paymentType || 'HOURLY');
+        } else if (userData.employee) {
+          // Employee profile exists but no current project
+          const profile: any = {
+            paymentType: userData.employee.paymentType || 'HOURLY',
+          };
+          if (userData.employee.hourlyRate) {
+            profile.hourlyRate = parseFloat(userData.employee.hourlyRate.toString());
+            setEmployeeHourlyRate(userData.employee.hourlyRate.toString());
+          }
+          if (userData.employee.salaryAmount) {
+            profile.salaryAmount = parseFloat(userData.employee.salaryAmount.toString());
+            setEmployeeSalaryAmount(userData.employee.salaryAmount.toString());
+          }
+          setEmployeeProfile(profile);
+          setEmployeePaymentType(userData.employee.paymentType || 'HOURLY');
+        }
       } else {
         setError(response.error || 'Failed to load user');
       }
@@ -160,6 +193,9 @@ export default function UserDetailPage() {
         if (employee.salaryAmount) {
           profile.salaryAmount = parseFloat(employee.salaryAmount.toString());
           setEmployeeSalaryAmount(employee.salaryAmount.toString());
+        }
+        if (employee.currentProject) {
+          profile.currentProject = employee.currentProject;
         }
         setEmployeeProfile(profile);
         setEmployeePaymentType(employee.paymentType || 'HOURLY');
@@ -713,6 +749,19 @@ export default function UserDetailPage() {
                   </div>
                 </div>
               ) : null}
+              {employeeProfile.currentProject ? (
+                <div className={styles.field}>
+                  <label>Current Project</label>
+                  <div className={styles.value}>
+                    {employeeProfile.currentProject.name} - {employeeProfile.currentProject.clientName}
+                  </div>
+                </div>
+              ) : (
+                <div className={styles.field}>
+                  <label>Current Project</label>
+                  <div className={styles.value}>No project assigned</div>
+                </div>
+              )}
             </div>
           ) : (
             <div className={styles.noEmployeeProfile}>
