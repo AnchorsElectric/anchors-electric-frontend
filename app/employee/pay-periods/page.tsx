@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import styles from './pay-periods.module.scss';
+import timeEntryStyles from '../time-entries/time-entries.module.scss';
 
 interface TimeEntry {
   id: string;
@@ -22,6 +23,7 @@ interface TimeEntry {
   project?: {
     id: string;
     name: string;
+    jobNumber: string;
   } | null;
 }
 
@@ -32,6 +34,11 @@ interface PayPeriod {
   endDate: string;
   totalHours: number | null;
   totalOvertimeHours: number | null;
+  totalHolidayHours?: number | null;
+  totalSickHours?: number | null;
+  totalRotationHours?: number | null;
+  totalTravelHours?: number | null;
+  totalPtoHours?: number | null;
   totalSickDays: number;
   totalPto: number;
   totalPerDiem: number;
@@ -127,6 +134,204 @@ export default function EmployeePayPeriodsPage() {
     if (!entry.startTime && !entry.endTime && perDiemValue > 0) return 'Per Diem Only';
     return 'Regular';
   };
+
+  const getEntryForDate = (date: string, period: PayPeriod): TimeEntry | null => {
+    return period.timeEntries.find(entry => entry.date === date) || null;
+  };
+
+  const getDayClass = (date: string, period: PayPeriod): string => {
+    const entry = getEntryForDate(date, period);
+    if (!entry) return timeEntryStyles.day;
+    
+    if (period.status === 'PAID') {
+      return timeEntryStyles.dayPaid;
+    } else if (period.status === 'APPROVED') {
+      return timeEntryStyles.dayApproved;
+    } else if (period.status === 'REJECTED') {
+      return timeEntryStyles.dayRejected;
+    } else if (period.status === 'SUBMITTED') {
+      return timeEntryStyles.daySubmitted;
+    }
+    
+    return timeEntryStyles.dayRegular;
+  };
+
+  const getDayInfo = (date: string, period: PayPeriod): { type: string; details: string[] } => {
+    const entry = getEntryForDate(date, period);
+    if (!entry) return { type: '', details: [] };
+    
+    const details: string[] = [];
+    
+    if (entry.isPTO === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      return { type: 'PTO', details };
+    }
+    
+    if (entry.isHoliday === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
+        details.push('Per Diem');
+      }
+      return { type: 'HOLIDAY', details };
+    }
+    
+    if (entry.sickDay === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
+        details.push('Per Diem');
+      }
+      return { type: 'SICK', details };
+    }
+    
+    if (entry.rotationDay === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
+        details.push('Per Diem');
+      }
+      return { type: 'ROTATION', details };
+    }
+    
+    if (entry.isTravelDay === true) {
+      if (entry.startTime && entry.endTime) {
+        details.push(`${entry.startTime} - ${entry.endTime}`);
+      }
+      if (entry.totalHours) {
+        details.push(`${entry.totalHours}h`);
+      }
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
+        details.push('Per Diem');
+      }
+      return { type: 'TRAVEL', details };
+    }
+    
+    const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+    if (!entry.startTime && !entry.endTime && !entry.totalHours && perDiemValue > 0) {
+      return { type: 'PER DIEM ONLY', details: [] };
+    }
+    
+    if (entry.startTime && entry.endTime) {
+      details.push(`${entry.startTime} - ${entry.endTime}`);
+    }
+    
+    if (entry.totalHours) {
+      details.push(`${entry.totalHours}h`);
+    }
+    
+    if (entry.hasPerDiem === true || perDiemValue > 0) {
+      details.push('Per Diem');
+    }
+    
+    return { type: 'REGULAR', details };
+  };
+
+  const renderCalendar = (period: PayPeriod) => {
+    const days = [];
+    // Parse date string manually to avoid timezone issues
+    const [startYear, startMonth, startDay] = period.startDate.split('-').map(Number);
+    const weekStart = new Date(startYear, startMonth - 1, startDay);
+    
+    for (let i = 0; i < 7; i++) {
+      const currentDay = new Date(weekStart);
+      currentDay.setDate(weekStart.getDate() + i);
+      
+      const year = currentDay.getFullYear();
+      const month = String(currentDay.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDay.getDate()).padStart(2, '0');
+      const date = `${year}-${month}-${day}`;
+      
+      const entry = getEntryForDate(date, period);
+      const dayClass = getDayClass(date, period);
+      const dayInfo = getDayInfo(date, period);
+      
+      const dayNumber = String(currentDay.getDate()).padStart(2, '0');
+      const monthNumber = String(currentDay.getMonth() + 1).padStart(2, '0');
+      const dateDisplay = `${monthNumber}/${dayNumber}`;
+      
+      // Show content if there's a type, details, or a project
+      const hasContent = dayInfo.type || dayInfo.details.length > 0 || entry?.project;
+      
+      days.push(
+        <div key={date} className={timeEntryStyles.dayWrapper}>
+          <div className={timeEntryStyles.dayNumber}>{dateDisplay}</div>
+          <div 
+            className={dayClass}
+            onClick={undefined}
+            style={{ cursor: 'not-allowed', opacity: 0.6 }}
+            title="This date is part of a submitted/approved pay period and cannot be edited"
+          >
+            {hasContent && (
+              <div className={timeEntryStyles.dayContent}>
+                {dayInfo.type && (
+                  <div className={timeEntryStyles.dayType}>{dayInfo.type}</div>
+                )}
+                {dayInfo.details.length > 0 && (
+                  <div className={timeEntryStyles.dayDetails}>
+                    {dayInfo.details.map((detail, idx) => (
+                      <div key={idx} className={timeEntryStyles.dayDetailItem}>{detail}</div>
+                    ))}
+                  </div>
+                )}
+                {entry?.project && (
+                  <div className={timeEntryStyles.dayDetails} style={{ marginTop: dayInfo.type || dayInfo.details.length > 0 ? '0.25rem' : '0', fontStyle: 'italic' }}>
+                    <div className={timeEntryStyles.dayDetailItem}>{entry.project.name} - {entry.project.jobNumber}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return days;
+  };
+
+  const formatWeekRange = (period: PayPeriod) => {
+    // Parse date strings manually to avoid timezone issues
+    const [startYear, startMonthNum, startDayNum] = period.startDate.split('-').map(Number);
+    const [endYear, endMonthNum, endDayNum] = period.endDate.split('-').map(Number);
+    const weekStart = new Date(startYear, startMonthNum - 1, startDayNum);
+    const weekEnd = new Date(endYear, endMonthNum - 1, endDayNum);
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const startMonth = monthNames[weekStart.getMonth()];
+    const endMonth = monthNames[weekEnd.getMonth()];
+    const startDay = weekStart.getDate();
+    const endDay = weekEnd.getDate();
+    const year = weekStart.getFullYear();
+    
+    if (weekStart.getMonth() === weekEnd.getMonth()) {
+      return `${startMonth} ${startDay}-${endDay}, ${year}`;
+    } else {
+      return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+    }
+  };
+
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const handleEditRejected = (periodId: string) => {
     // Navigate to time entries page and allow editing
@@ -233,91 +438,101 @@ export default function EmployeePayPeriodsPage() {
 
                 {isExpanded && (
                   <div className={styles.payPeriodDetails}>
-                    <div className={styles.detailsSection}>
-                      <h3>Time Entries</h3>
-                      {period.timeEntries.length === 0 ? (
-                        <p className={styles.noEntries}>No time entries for this period</p>
-                      ) : (
-                        <div className={styles.timeEntriesList}>
-                          {period.timeEntries.map((entry) => (
-                            <div key={entry.id} className={styles.timeEntryCard}>
-                              <div className={styles.entryHeader}>
-                                <div className={styles.entryDate}>{formatDate(entry.date)}</div>
-                                <div className={styles.entryType}>{getEntryType(entry)}</div>
-                              </div>
-                              <div className={styles.entryDetails}>
-                                {entry.startTime && entry.endTime && (
-                                  <div className={styles.entryTime}>
-                                    {entry.startTime} - {entry.endTime}
-                                  </div>
-                                )}
-                                {entry.totalHours !== null && (
-                                  <div className={styles.entryHours}>
-                                    Hours: {entry.totalHours.toFixed(2)}
-                                  </div>
-                                )}
-                                {(entry.perDiem !== undefined && entry.perDiem > 0 || entry.hasPerDiem) && (
-                                  <div className={styles.entryPerDiem}>
-                                    Per Diem: {entry.perDiem !== undefined ? Number(entry.perDiem).toFixed(2) : 'Yes'}
-                                  </div>
-                                )}
-                                {entry.project && (
-                                  <div className={styles.entryProject}>
-                                    Project: {entry.project.name}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className={timeEntryStyles.calendarHeader}>
+                      <h2 className={timeEntryStyles.monthTitle}>
+                        {formatWeekRange(period)}
+                      </h2>
                     </div>
 
-                    <div className={styles.detailsSection}>
-                      <h3>Period Information</h3>
-                      <div className={styles.infoGrid}>
-                        <div className={styles.infoItem}>
-                          <label>Total Hours:</label>
-                          <span>{period.totalHours !== null ? period.totalHours.toFixed(2) : '0.00'}</span>
+                    <div className={timeEntryStyles.calendar}>
+                      <div className={timeEntryStyles.weekDays}>
+                        {weekDays.map(day => (
+                          <div key={day} className={timeEntryStyles.weekDayWrapper}>
+                            <div className={timeEntryStyles.weekDaySpacer}></div>
+                            <div className={timeEntryStyles.weekDay}>{day}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className={timeEntryStyles.daysGrid}>
+                        {renderCalendar(period)}
+                      </div>
+                    </div>
+
+                    <div className={timeEntryStyles.summarySection}>
+                      <h3 className={timeEntryStyles.summaryTitle}>Week Summary</h3>
+                      <div className={timeEntryStyles.summaryGrid}>
+                        <div className={timeEntryStyles.summaryItem}>
+                          <span className={timeEntryStyles.summaryLabel}>Total Hours:</span>
+                          <span className={timeEntryStyles.summaryValue}>
+                            {period.totalHours !== null ? period.totalHours.toFixed(2) : '0.00'}
+                          </span>
                         </div>
-                        <div className={styles.infoItem}>
-                          <label>Overtime Hours:</label>
-                          <span>{period.totalOvertimeHours !== null ? period.totalOvertimeHours.toFixed(2) : '0.00'}</span>
-                        </div>
-                        <div className={styles.infoItem}>
-                          <label>Sick Days:</label>
-                          <span>{period.totalSickDays}</span>
-                        </div>
-                        <div className={styles.infoItem}>
-                          <label>PTO Days:</label>
-                          <span>{period.totalPto}</span>
-                        </div>
-                        <div className={styles.infoItem}>
-                          <label>Per Diem Days:</label>
-                          <span>{Number(period.totalPerDiem).toFixed(2)}</span>
-                        </div>
-                        {period.submittedAt && (
-                          <div className={styles.infoItem}>
-                            <label>Submitted At:</label>
-                            <span>{new Date(period.submittedAt).toLocaleString()}</span>
+                        {period.totalOvertimeHours !== null && period.totalOvertimeHours > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>Overtime:</span>
+                            <span className={timeEntryStyles.summaryValue}>
+                              {period.totalOvertimeHours.toFixed(2)}
+                            </span>
                           </div>
                         )}
-                        {period.reviewedAt && (
-                          <div className={styles.infoItem}>
-                            <label>Reviewed At:</label>
-                            <span>{new Date(period.reviewedAt).toLocaleString()}</span>
+                        {period.totalSickDays > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>Sick Days:</span>
+                            <span className={timeEntryStyles.summaryValue}>{period.totalSickDays}</span>
                           </div>
                         )}
-                        {period.reviewer && (
-                          <div className={styles.infoItem}>
-                            <label>Reviewed By:</label>
-                            <span>{period.reviewer.firstName} {period.reviewer.lastName}</span>
+                        {period.totalPto > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>PTO:</span>
+                            <span className={timeEntryStyles.summaryValue}>{period.totalPto}</span>
                           </div>
                         )}
-                        {period.rejectionReason && (
-                          <div className={styles.infoItem}>
-                            <label>Rejection Reason:</label>
-                            <span className={styles.rejectionReason}>{period.rejectionReason}</span>
+                        {Number(period.totalPerDiem) > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>Per Diem:</span>
+                            <span className={timeEntryStyles.summaryValue}>
+                              {Number(period.totalPerDiem).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {period.totalHolidayHours !== null && period.totalHolidayHours !== undefined && period.totalHolidayHours > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>Holiday Hours:</span>
+                            <span className={timeEntryStyles.summaryValue}>
+                              {period.totalHolidayHours.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {period.totalRotationHours !== null && period.totalRotationHours !== undefined && period.totalRotationHours > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>Rotation Hours:</span>
+                            <span className={timeEntryStyles.summaryValue}>
+                              {period.totalRotationHours.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {period.totalTravelHours !== null && period.totalTravelHours !== undefined && period.totalTravelHours > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>Travel Hours:</span>
+                            <span className={timeEntryStyles.summaryValue}>
+                              {period.totalTravelHours.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {period.totalPtoHours !== null && period.totalPtoHours !== undefined && period.totalPtoHours > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>PTO Hours:</span>
+                            <span className={timeEntryStyles.summaryValue}>
+                              {period.totalPtoHours.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {period.totalSickHours !== null && period.totalSickHours !== undefined && period.totalSickHours > 0 && (
+                          <div className={timeEntryStyles.summaryItem}>
+                            <span className={timeEntryStyles.summaryLabel}>Sick Hours:</span>
+                            <span className={timeEntryStyles.summaryValue}>
+                              {period.totalSickHours.toFixed(2)}
+                            </span>
                           </div>
                         )}
                       </div>

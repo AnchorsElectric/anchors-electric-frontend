@@ -41,9 +41,13 @@ class ApiClient {
       (response) => response,
       (error: AxiosError<ApiResponse>) => {
         if (error.response?.status === 401) {
-          // Only redirect if it's not a projects endpoint (employees can't access projects but shouldn't be logged out)
+          // Only redirect if it's not a projects endpoint, not a login/auth endpoint, and not a password change endpoint
+          // (login/auth/password change endpoints should show their own error messages)
           const url = error.config?.url || '';
-          if (!url.includes('/projects')) {
+          if (!url.includes('/projects') && 
+              !url.includes('/auth/login') && 
+              !url.includes('/auth/register') &&
+              !url.includes('/profile/change-password')) {
             // Unauthorized - clear token and redirect to login
             if (typeof window !== 'undefined') {
               localStorage.removeItem('auth_token');
@@ -196,6 +200,16 @@ class ApiClient {
     return response.data;
   }
 
+  async deactivateUser(userId: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/users/${userId}/deactivate`);
+    return response.data;
+  }
+
+  async reactivateUser(userId: string) {
+    const response = await this.client.post<ApiResponse>(`/admin/users/${userId}/reactivate`);
+    return response.data;
+  }
+
   async createEmployeeProfile(
     userId: string,
     data: {
@@ -323,6 +337,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getPayPeriodById(id: string) {
+    const response = await this.client.get<ApiResponse>(`/admin/pay-periods/${id}`);
+    return response.data;
+  }
+
   async approvePayPeriod(id: string) {
     const response = await this.client.post<ApiResponse>(`/admin/pay-periods/${id}/approve`);
     return response.data;
@@ -351,6 +370,7 @@ class ApiClient {
 
   async createProject(data: {
     name: string;
+    jobNumber: string;
     address: string;
     clientName: string;
   }) {
@@ -360,6 +380,7 @@ class ApiClient {
 
   async updateProject(id: string, data: {
     name: string;
+    jobNumber: string;
     address: string;
     clientName: string;
   }) {

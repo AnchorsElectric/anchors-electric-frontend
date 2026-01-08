@@ -41,10 +41,11 @@ function LoginContent() {
           router.push('/employee/profile');
         }
       } else {
-        setError(response.error || 'Login failed');
+        setError(response.error || 'Login failed. Please check your credentials and try again.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'An error occurred');
+      const errorMessage = err.response?.data?.error || err.message || 'An error occurred. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

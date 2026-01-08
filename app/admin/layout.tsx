@@ -117,7 +117,7 @@ export default function AdminLayout({
           className={`${styles.tab} ${activeTab === 'users' ? styles.activeTab : ''}`}
           onClick={() => handleTabClick('users')}
         >
-          Manage Users
+          Users
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'projects' ? styles.activeTab : ''}`}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
+import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
 import styles from './user-detail.module.scss';
 
 interface User {
@@ -22,6 +23,7 @@ interface User {
   ssn: string;
   role: string;
   emailVerified: boolean;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
   emergencyContacts: Array<{
@@ -44,6 +46,7 @@ export default function UserDetailPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [employeeProfile, setEmployeeProfile] = useState<{ 
@@ -53,6 +56,7 @@ export default function UserDetailPage() {
     currentProject?: {
       id: string;
       name: string;
+      jobNumber: string;
       clientName: string;
     };
   } | null>(null);
@@ -60,10 +64,11 @@ export default function UserDetailPage() {
   const [employeeHourlyRate, setEmployeeHourlyRate] = useState('');
   const [employeeSalaryAmount, setEmployeeSalaryAmount] = useState('');
   const [employeeProjectId, setEmployeeProjectId] = useState<string>('');
-  const [projects, setProjects] = useState<Array<{ id: string; name: string; clientName: string }>>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; jobNumber: string; clientName: string }>>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [savingEmployee, setSavingEmployee] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -102,8 +107,11 @@ export default function UserDetailPage() {
     try {
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
-        const isUserAdmin = (response.data as any).isAdmin || false;
+        const profileData = response.data as any;
+        const isUserAdmin = profileData.isAdmin || false;
         setIsAdmin(isUserAdmin);
+        // The response structure is { user: {...}, isAdmin: ... }
+        setCurrentUserId(profileData.user?.id || null);
         if (!isUserAdmin) {
           router.push('/employee/profile');
         }
@@ -126,7 +134,7 @@ export default function UserDetailPage() {
           middleName: userData.middleName || '',
           lastName: userData.lastName || '',
           email: userData.email || '',
-          phone: userData.phone || '',
+          phone: formatPhoneNumber(userData.phone || ''),
           address1: userData.address1 || '',
           address2: userData.address2 || '',
           city: userData.city || '',
@@ -135,7 +143,7 @@ export default function UserDetailPage() {
           emergencyContact: userData.emergencyContacts?.[0] ? {
             firstName: userData.emergencyContacts[0].firstName || '',
             lastName: userData.emergencyContacts[0].lastName || '',
-            phone: userData.emergencyContacts[0].phone || '',
+            phone: formatPhoneNumber(userData.emergencyContacts[0].phone || ''),
             email: userData.emergencyContacts[0].email || '',
             relationship: userData.emergencyContacts[0].relationship || '',
           } : {
@@ -328,23 +336,46 @@ export default function UserDetailPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // Format phone number if it's the phone field
+    if (name === 'phone') {
+      const formatted = formatPhoneNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
     setError('');
     setSuccess('');
   };
 
   const handleEmergencyContactChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      emergencyContact: {
-        ...prev.emergencyContact,
-        [name]: value,
-      },
-    }));
+    
+    // Format phone number if it's the phone field
+    if (name === 'phone') {
+      const formatted = formatPhoneNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [name]: formatted,
+        },
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [name]: value,
+        },
+      }));
+    }
     setError('');
     setSuccess('');
   };
@@ -361,7 +392,7 @@ export default function UserDetailPage() {
         middleName: formData.middleName || null,
         lastName: formData.lastName,
         email: formData.email,
-        phone: formData.phone,
+        phone: getPhoneDigits(formData.phone),
         address1: formData.address1,
         address2: formData.address2 || null,
         city: formData.city,
@@ -379,7 +410,7 @@ export default function UserDetailPage() {
         updateData.emergencyContact = {
           firstName: formData.emergencyContact.firstName,
           lastName: formData.emergencyContact.lastName,
-          phone: formData.emergencyContact.phone,
+          phone: getPhoneDigits(formData.emergencyContact.phone),
           email: formData.emergencyContact.email || null,
           relationship: formData.emergencyContact.relationship,
         };
@@ -396,6 +427,48 @@ export default function UserDetailPage() {
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await apiClient.deactivateUser(userId);
+      if (response.success) {
+        setSuccess('User deactivated successfully');
+        setShowDeactivateModal(false);
+        await loadUser();
+      } else {
+        setError(response.error || 'Failed to deactivate user');
+      }
+    } catch (err: any) {
+      console.error('Deactivate user error:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to deactivate user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await apiClient.reactivateUser(userId);
+      if (response.success) {
+        setSuccess('User reactivated successfully');
+        await loadUser();
+      } else {
+        setError(response.error || 'Failed to reactivate user');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to reactivate user');
     } finally {
       setSaving(false);
     }
@@ -463,9 +536,32 @@ export default function UserDetailPage() {
                       Edit Employee Profile
                     </button>
                   )}
-                  <button onClick={() => setShowDeleteModal(true)} className={styles.deleteButton}>
-                    Delete User
-                  </button>
+                  {user.isActive ? (
+                    currentUserId && currentUserId !== userId && (
+                      <button 
+                        onClick={() => setShowDeactivateModal(true)} 
+                        className={styles.deactivateButton}
+                        disabled={saving}
+                      >
+                        Deactivate User
+                      </button>
+                    )
+                  ) : (
+                    currentUserId && currentUserId !== userId && (
+                      <button 
+                        onClick={handleReactivate} 
+                        className={styles.reactivateButton}
+                        disabled={saving}
+                      >
+                        {saving ? 'Reactivating...' : 'Reactivate User'}
+                      </button>
+                    )
+                  )}
+                  {currentUserId && currentUserId !== userId && (
+                    <button onClick={() => setShowDeleteModal(true)} className={styles.deleteButton}>
+                      Delete User
+                    </button>
+                  )}
                 </>
               )}
           <button onClick={() => router.push('/admin/users')} className={styles.backButton}>
@@ -556,6 +652,8 @@ export default function UserDetailPage() {
                   onChange={handleChange}
                   required
                   className={styles.input}
+                  placeholder="(XXX) XXX-XXXX"
+                  maxLength={14}
                 />
               ) : (
                 <div className={styles.value}>{user.phone}</div>
@@ -577,6 +675,16 @@ export default function UserDetailPage() {
                 <span className={`${styles.role} ${styles[user.role.toLowerCase()]}`}>
                   {user.role}
                 </span>
+              </div>
+            </div>
+            <div className={styles.field}>
+              <label>Account Status</label>
+              <div className={styles.value}>
+                {user.isActive ? (
+                  <span className={styles.activeStatus}>Active</span>
+                ) : (
+                  <span className={styles.inactiveStatus}>Deactivated</span>
+                )}
               </div>
             </div>
             <div className={styles.field}>
@@ -723,6 +831,8 @@ export default function UserDetailPage() {
                       value={formData.emergencyContact.phone}
                       onChange={handleEmergencyContactChange}
                       className={styles.input}
+                      placeholder="(XXX) XXX-XXXX"
+                      maxLength={14}
                     />
                   ) : (
                     <div className={styles.value}>
@@ -797,7 +907,7 @@ export default function UserDetailPage() {
                 <div className={styles.field}>
                   <label>Current Project</label>
                   <div className={styles.value}>
-                    {employeeProfile.currentProject.name} - {employeeProfile.currentProject.clientName}
+                    {employeeProfile.currentProject.name} - {employeeProfile.currentProject.jobNumber}
                   </div>
                 </div>
               ) : (
@@ -966,7 +1076,7 @@ export default function UserDetailPage() {
                   <option value="">No Project Assigned</option>
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
-                      {project.name} - {project.clientName}
+                      {project.name} - {project.jobNumber}
                     </option>
                   ))}
                 </select>
@@ -1053,6 +1163,48 @@ export default function UserDetailPage() {
                 disabled={deleting}
               >
                 {deleting ? 'Deleting...' : 'Delete User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate Confirmation Modal */}
+      {showDeactivateModal && (
+        <div className={styles.modalOverlay} onClick={() => !saving && setShowDeactivateModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Deactivate User</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !saving && setShowDeactivateModal(false)}
+                disabled={saving}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Are you sure you want to deactivate <strong>{user.firstName} {user.lastName}</strong> ({user.email})?
+              </p>
+              <p className={styles.warning}>
+                This user will not be able to log in until you reactivate their account.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => setShowDeactivateModal(false)}
+                disabled={saving}
+              >
+                No, Cancel
+              </button>
+              <button
+                className={styles.deactivateButton}
+                onClick={handleDeactivate}
+                disabled={saving}
+              >
+                {saving ? 'Deactivating...' : 'Yes, Deactivate'}
               </button>
             </div>
           </div>

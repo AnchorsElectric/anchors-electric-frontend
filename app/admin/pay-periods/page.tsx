@@ -272,7 +272,8 @@ export default function AdminPayPeriodsPage() {
               <div key={period.id} className={styles.payPeriodCard}>
                 <div
                   className={styles.payPeriodHeader}
-                  onClick={() => toggleExpand(period.id)}
+                  onClick={() => router.push(`/admin/pay-periods/${period.id}`)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className={styles.payPeriodInfo}>
                     <div className={styles.employeeName}>

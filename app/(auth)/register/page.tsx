@@ -37,22 +37,45 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // Format phone number if it's the phone field
+    if (name === 'phone') {
+      const formatted = formatPhoneNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
     setError('');
   };
 
   const handleEmergencyContactChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      emergencyContact: {
-        ...prev.emergencyContact,
-        [name]: value,
-      },
-    }));
+    
+    // Format phone number if it's the phone field
+    if (name === 'phone') {
+      const formatted = formatPhoneNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [name]: formatted,
+        },
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [name]: value,
+        },
+      }));
+    }
   };
 
   const handleSSNChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +108,12 @@ export default function RegisterPage() {
     // Basic validation
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
       setError('Please fill in all required fields');
+      return false;
+    }
+
+    // Validate email domain
+    if (!formData.email.toLowerCase().endsWith('@anchorselectric.com')) {
+      setError('Email must be a company email address (@anchorselectric.com)');
       return false;
     }
 
@@ -133,7 +162,7 @@ export default function RegisterPage() {
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
-        phone: formData.phone,
+        phone: getPhoneDigits(formData.phone),
         address1: formData.address1,
         address2: formData.address2 || undefined,
         city: formData.city,
@@ -151,7 +180,7 @@ export default function RegisterPage() {
         payload.emergencyContact = {
           firstName: formData.emergencyContact.firstName,
           lastName: formData.emergencyContact.lastName,
-          phone: formData.emergencyContact.phone,
+          phone: getPhoneDigits(formData.emergencyContact.phone),
           email: formData.emergencyContact.email || undefined,
           relationship: formData.emergencyContact.relationship,
         };
@@ -224,7 +253,7 @@ export default function RegisterPage() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="email">Email *</label>
+                <label htmlFor="email">Email * (@anchorselectric.com)</label>
                 <input
                   id="email"
                   name="email"
@@ -233,6 +262,7 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   required
                   disabled={loading}
+                  placeholder="user@anchorselectric.com"
                 />
               </div>
 
@@ -308,6 +338,8 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   required
                   disabled={loading}
+                  placeholder="(XXX) XXX-XXXX"
+                  maxLength={14}
                 />
               </div>
 
@@ -417,6 +449,8 @@ export default function RegisterPage() {
                   value={formData.emergencyContact.phone}
                   onChange={handleEmergencyContactChange}
                   disabled={loading}
+                  placeholder="(XXX) XXX-XXXX"
+                  maxLength={14}
                 />
               </div>
 

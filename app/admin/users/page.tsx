@@ -15,6 +15,7 @@ interface User {
   phone: string;
   role: string;
   emailVerified: boolean;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
   employee?: {
@@ -150,6 +151,7 @@ export default function AdminUsersPage() {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th>Employee Profile</th>
                 <th>Email Verified</th>
                 <th>Created At</th>
@@ -158,7 +160,7 @@ export default function AdminUsersPage() {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className={styles.noData}>
+                  <td colSpan={8} className={styles.noData}>
                     No users found
                   </td>
                 </tr>
@@ -179,6 +181,13 @@ export default function AdminUsersPage() {
                       <span className={`${styles.role} ${styles[user.role.toLowerCase()]}`}>
                         {user.role}
                       </span>
+                    </td>
+                    <td>
+                      {user.isActive ? (
+                        <span className={styles.activeStatus}>Active</span>
+                      ) : (
+                        <span className={styles.inactiveStatus}>Deactivated</span>
+                      )}
                     </td>
                     <td>
                       {user.employee && user.employee !== null ? (

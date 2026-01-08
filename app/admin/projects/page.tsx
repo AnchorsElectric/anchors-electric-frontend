@@ -9,6 +9,7 @@ import styles from './projects.module.scss';
 interface Project {
   id: string;
   name: string;
+  jobNumber: string;
   address: string;
   clientName: string;
   createdAt: string;
@@ -24,9 +25,14 @@ export default function AdminProjectsPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    jobNumber: '',
     address: '',
     clientName: '',
   });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -57,7 +63,7 @@ export default function AdminProjectsPage() {
 
   const handleAdd = () => {
     setEditingProject(null);
-    setFormData({ name: '', address: '', clientName: '' });
+    setFormData({ name: '', jobNumber: '', address: '', clientName: '' });
     setShowModal(true);
   };
 
@@ -65,27 +71,43 @@ export default function AdminProjectsPage() {
     setEditingProject(project);
     setFormData({
       name: project.name,
+      jobNumber: project.jobNumber,
       address: project.address,
       clientName: project.clientName,
     });
     setShowModal(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) {
+  const handleDeleteClick = (project: Project) => {
+    setProjectToDelete(project);
+    setDeleteConfirmText('');
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!projectToDelete) return;
+    
+    if (deleteConfirmText !== projectToDelete.name) {
+      setError('Project name does not match. Please enter the exact project name to confirm deletion.');
       return;
     }
 
     try {
+      setDeleting(true);
       setError('');
-      const response = await apiClient.deleteProject(id);
+      const response = await apiClient.deleteProject(projectToDelete.id);
       if (response.success) {
+        setShowDeleteModal(false);
+        setProjectToDelete(null);
+        setDeleteConfirmText('');
         await loadProjects();
       } else {
         setError(response.error || 'Failed to delete project');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to delete project');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -134,6 +156,7 @@ export default function AdminProjectsPage() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Job Number</th>
                 <th>Address</th>
                 <th>Client Name</th>
                 <th>Actions</th>
@@ -141,11 +164,12 @@ export default function AdminProjectsPage() {
             </thead>
             <tbody>
               {projects.map((project) => (
-                <tr key={project.id}>
+                <tr key={project.id} className={styles.tableRow} onClick={() => router.push(`/admin/projects/${project.id}`)}>
                   <td>{project.name}</td>
+                  <td>{project.jobNumber}</td>
                   <td>{project.address}</td>
                   <td>{project.clientName}</td>
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => handleEdit(project)}
                       className={styles.editButton}
@@ -153,7 +177,7 @@ export default function AdminProjectsPage() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(project.id)}
+                      onClick={() => handleDeleteClick(project)}
                       className={styles.deleteButton}
                     >
                       Delete
@@ -177,6 +201,15 @@ export default function AdminProjectsPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Job Number</label>
+                <input
+                  type="text"
+                  value={formData.jobNumber}
+                  onChange={(e) => setFormData({ ...formData, jobNumber: e.target.value })}
                   required
                 />
               </div>
@@ -211,6 +244,70 @@ export default function AdminProjectsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && projectToDelete && (
+        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Delete Project</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !deleting && setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.warningBox}>
+                <h3 className={styles.warningTitle}>⚠️ Warning: This action cannot be undone</h3>
+                <p className={styles.warningText}>
+                  You are about to permanently delete the project <strong>"{projectToDelete.name}"</strong> (Job Number: {projectToDelete.jobNumber}).
+                </p>
+                <p className={styles.warningText}>
+                  This will:
+                </p>
+                <ul className={styles.warningList}>
+                  <li>Remove the project from the system permanently</li>
+                  <li>Disassociate any employees currently assigned to this project</li>
+                  <li>Remove the project reference from all time entries (time entries will remain but without project association)</li>
+                  <li>Affect any historical data linked to this project</li>
+                </ul>
+                <p className={styles.warningText}>
+                  <strong>To confirm deletion, please type the exact project name below:</strong>
+                </p>
+                <div className={styles.formGroup}>
+                  <label>Project Name</label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder={projectToDelete.name}
+                    disabled={deleting}
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => !deleting && setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.deleteConfirmButton}
+                onClick={handleDeleteConfirm}
+                disabled={deleting || deleteConfirmText !== projectToDelete.name}
+              >
+                {deleting ? 'Deleting...' : 'Delete Project'}
+              </button>
+            </div>
           </div>
         </div>
       )}

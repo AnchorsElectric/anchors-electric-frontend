@@ -13,6 +13,13 @@
   margin: 0 auto;
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
 .title {
   font-size: 2rem;
   font-weight: 700;
@@ -22,7 +29,44 @@
 
 .subtitle {
   color: #666;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 1rem;
+}
+
+.editButton {
+  padding: 0.75rem 1.5rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #0056b3;
+  }
+}
+
+.changePasswordButton {
+  padding: 0.75rem 1.5rem;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #5a6268;
+  }
 }
 
 .error {
@@ -56,6 +100,7 @@
   padding-bottom: 0.5rem;
 }
 
+
 .fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -69,9 +114,11 @@
 }
 
 .field label {
-  color: #000000;
-  font-weight: 500;
+  color: #666;
+  font-weight: 600;
   font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .field input,
@@ -93,6 +140,16 @@
     background-color: #f5f5f5;
     cursor: not-allowed;
   }
+}
+
+.fieldValue {
+  padding: 0.75rem;
+  font-size: 1.1rem;
+  color: #000000;
+  font-weight: 500;
+  min-height: 1.5rem;
+  display: flex;
+  align-items: center;
 }
 
 .field select {
@@ -144,7 +201,79 @@
 .passwordActions {
   display: flex;
   justify-content: flex-end;
+  gap: 1rem;
   margin-top: 1rem;
+}
+
+.passwordReadOnly {
+  padding: 1rem 0;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #000000;
+}
+
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.2s;
+
+  &:hover:not(:disabled) {
+    color: #000;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.modalFooter {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  justify-content: flex-end;
 }
 
 .passwordButton {

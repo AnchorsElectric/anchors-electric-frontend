@@ -181,6 +181,33 @@
   }
 }
 
+.activeStatus {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background-color: #10b981;
+  color: white;
+}
+
+.inactiveStatus {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background-color: #ef4444;
+  color: white;
+}
+
+.role {
+  &.user {
+    background-color: #6c757d;
+    color: white;
+  }
+}
+
 .verified {
   color: #28a745;
   font-weight: 500;

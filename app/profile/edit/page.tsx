@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
+import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
 import styles from './edit.module.scss';
 
 export default function EditProfilePage() {
@@ -57,7 +58,7 @@ export default function EditProfilePage() {
           firstName: user.firstName || '',
           middleName: user.middleName || '',
           lastName: user.lastName || '',
-          phone: user.phone || '',
+          phone: formatPhoneNumber(user.phone || ''),
           address1: user.address1 || '',
           address2: user.address2 || '',
           city: user.city || '',
@@ -66,7 +67,7 @@ export default function EditProfilePage() {
           emergencyContact: user.emergencyContacts?.[0] ? {
             firstName: user.emergencyContacts[0].firstName || '',
             lastName: user.emergencyContacts[0].lastName || '',
-            phone: user.emergencyContacts[0].phone || '',
+            phone: formatPhoneNumber(user.emergencyContacts[0].phone || ''),
             email: user.emergencyContacts[0].email || '',
             relationship: user.emergencyContacts[0].relationship || '',
           } : {
@@ -89,22 +90,45 @@ export default function EditProfilePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // Format phone number if it's the phone field
+    if (name === 'phone') {
+      const formatted = formatPhoneNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
     setError('');
   };
 
   const handleEmergencyContactChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      emergencyContact: {
-        ...prev.emergencyContact,
-        [name]: value,
-      },
-    }));
+    
+    // Format phone number if it's the phone field
+    if (name === 'phone') {
+      const formatted = formatPhoneNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [name]: formatted,
+        },
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [name]: value,
+        },
+      }));
+    }
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,7 +207,7 @@ export default function EditProfilePage() {
         firstName: formData.firstName,
         middleName: formData.middleName || null,
         lastName: formData.lastName,
-        phone: formData.phone,
+        phone: getPhoneDigits(formData.phone),
         address1: formData.address1,
         address2: formData.address2 || null,
         city: formData.city,
@@ -199,7 +223,7 @@ export default function EditProfilePage() {
         payload.emergencyContact = {
           firstName: formData.emergencyContact.firstName,
           lastName: formData.emergencyContact.lastName,
-          phone: formData.emergencyContact.phone,
+          phone: getPhoneDigits(formData.emergencyContact.phone),
           email: formData.emergencyContact.email || null,
           relationship: formData.emergencyContact.relationship,
         };
@@ -300,6 +324,8 @@ export default function EditProfilePage() {
                   onChange={handleChange}
                   required
                   disabled={loading}
+                  placeholder="(XXX) XXX-XXXX"
+                  maxLength={14}
                 />
               </div>
 
@@ -409,6 +435,8 @@ export default function EditProfilePage() {
                   value={formData.emergencyContact.phone}
                   onChange={handleEmergencyContactChange}
                   disabled={loading}
+                  placeholder="(XXX) XXX-XXXX"
+                  maxLength={14}
                 />
               </div>
 

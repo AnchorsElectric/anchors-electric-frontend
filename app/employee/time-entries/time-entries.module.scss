@@ -9,6 +9,7 @@
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 .title {
@@ -39,7 +40,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .monthButton {
@@ -66,6 +69,8 @@
 
 .calendar {
   margin-bottom: 2rem;
+  width: 100%;
+  overflow: hidden;
 }
 
 .weekDays {
@@ -100,12 +105,15 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0.75rem;
+  width: 100%;
 }
 
 .dayWrapper {
   display: grid;
-  grid-template-rows: auto 120px;
+  grid-template-rows: auto 1fr;
   gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .dayNumber {
@@ -119,7 +127,8 @@
 .day,
 .dayEmpty {
   width: 100%;
-  height: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   padding: 0.75rem !important;
@@ -129,8 +138,10 @@
   flex-direction: column;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-y: visible;
+  overflow-x: visible;
   box-sizing: border-box;
+  max-width: 100%;
 
   &:hover {
     border-color: #3b82f6;
@@ -161,8 +172,13 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-y: visible;
+  overflow-x: visible;
   box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  max-width: 100%;
   
   &:hover {
     background: #bfdbfe;
@@ -182,8 +198,13 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-y: visible;
+  overflow-x: visible;
   box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  max-width: 100%;
   
   &:hover {
     background: #ffe69c;
@@ -203,8 +224,13 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-y: visible;
+  overflow-x: visible;
   box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  max-width: 100%;
   
   &:hover {
     background: #a7f3d0;
@@ -224,8 +250,13 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-y: visible;
+  overflow-x: visible;
   box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  max-width: 100%;
   
   &:hover {
     background: #fecaca;
@@ -245,8 +276,13 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  overflow-y: visible;
+  overflow-x: visible;
   box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  max-width: 100%;
   
   &:hover {
     background: #ddd6fe;
@@ -426,31 +462,6 @@
   font-size: 0.9rem;
 }
 
-.sameAsLastButtonContainer {
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: center;
-}
-
-.sameAsLastButton {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: #333;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #e0e0e0;
-    border-color: #bbb;
-  }
-
-  &:active {
-    transform: translateY(1px);
-  }
-}
 
 .form {
   display: flex;
@@ -665,6 +676,12 @@
   }
 }
 
+.submitActions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
 .submitSection {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
@@ -697,6 +714,37 @@
 
   &:hover:not(:disabled) {
     background: #218838;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.clearWeekSection {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 1.5rem;
+  margin-bottom: 0;
+  gap: 1rem;
+}
+
+.clearWeekButton {
+  padding: 0.75rem 1.5rem;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: #b91c1c;
   }
 
   &:disabled {

@@ -36,6 +36,7 @@ interface TimeEntry {
 interface Project {
   id: string;
   name: string;
+  jobNumber: string;
   address: string;
   clientName: string;
 }
@@ -57,8 +58,11 @@ export default function TimeEntriesPage() {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [showClearWeekConfirm, setShowClearWeekConfirm] = useState(false);
+  const [clearingWeek, setClearingWeek] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
   const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
+  const [payPeriods, setPayPeriods] = useState<Array<{ id: string; startDate: string; endDate: string; status: string }>>([]);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -79,6 +83,7 @@ export default function TimeEntriesPage() {
     loadProfile();
     loadProjects();
     loadTimeEntries();
+    loadPayPeriods();
   }, [router, currentWeekStart]);
 
   const loadProfile = async () => {
@@ -115,6 +120,23 @@ export default function TimeEntriesPage() {
         // Just ignore - projects are optional for employees
         return;
       }
+    }
+  };
+
+  const loadPayPeriods = async () => {
+    try {
+      const response = await apiClient.getPayPeriods();
+      if (response.success && response.data) {
+        const periodsData = (response.data as any).payPeriods || [];
+        setPayPeriods(periodsData.map((period: any) => ({
+          id: period.id,
+          startDate: period.startDate,
+          endDate: period.endDate,
+          status: period.status,
+        })));
+      }
+    } catch (err: any) {
+      // Silently fail - pay periods are optional for this check
     }
   };
 
@@ -164,13 +186,24 @@ export default function TimeEntriesPage() {
   };
 
   const isDateLocked = (date: string): boolean => {
-    const entry = timeEntries.find(e => e.date === date);
-    if (!entry || !entry.payPeriodId || !entry.payPeriod) {
-      return false;
+    // First check if the current week's pay period is SUBMITTED or APPROVED
+    const currentPayPeriod = getCurrentWeekPayPeriod();
+    if (currentPayPeriod) {
+      const status = currentPayPeriod.status;
+      // Lock if SUBMITTED, APPROVED, or PAID, allow editing if DRAFT or REJECTED
+      if (status === 'SUBMITTED' || status === 'APPROVED' || status === 'PAID') {
+        return true;
+      }
     }
-    const status = entry.payPeriod.status;
-    // Lock if SUBMITTED, APPROVED, or PAID, allow editing if DRAFT or REJECTED
-    return status === 'SUBMITTED' || status === 'APPROVED' || status === 'PAID';
+    
+    // Also check individual entry's pay period status (for backwards compatibility)
+    const entry = timeEntries.find(e => e.date === date);
+    if (entry && entry.payPeriodId && entry.payPeriod) {
+      const status = entry.payPeriod.status;
+      return status === 'SUBMITTED' || status === 'APPROVED' || status === 'PAID';
+    }
+    
+    return false;
   };
 
   const adjustTime = (time: string, minutes: number): string => {
@@ -204,14 +237,15 @@ export default function TimeEntriesPage() {
       return;
     }
 
+    // Check if date is locked (pay period is SUBMITTED, APPROVED, or PAID)
+    if (isDateLocked(date)) {
+      setError('This date is part of a submitted/approved pay period and cannot be edited');
+      return;
+    }
+
     const existingEntry = timeEntries.find(entry => entry.date === date);
     
     if (existingEntry) {
-      // Check if entry is locked (SUBMITTED, APPROVED, or PAID)
-      if (isDateLocked(date)) {
-        setError('This entry is part of a submitted/approved/paid pay period and cannot be edited');
-        return;
-      }
       
       // Check if weekend and entry type is not allowed on weekends
       if (isWeekend(date)) {
@@ -285,8 +319,8 @@ export default function TimeEntriesPage() {
       setStartTime('09:00');
       setEndTime('17:30');
       setHasPerDiem(false);
-      // Set default project to current project if available
-      setSelectedProject(currentProjectId || '');
+      // Set default project to current project if available, otherwise first project
+      setSelectedProject(currentProjectId || (projects.length > 0 ? projects[0].id : ''));
     }
     
     setSelectedDate(date);
@@ -295,10 +329,18 @@ export default function TimeEntriesPage() {
 
   const getLastLoggedEntry = async (): Promise<TimeEntry | null> => {
     try {
-      // Get entries from a wide date range (last 3 months) to find the most recent entry
-      const endDate = new Date();
+      // First, try to use already-loaded entries from the current week
+      let entries = [...timeEntries];
+      
+      // If we don't have entries or need to look further back, fetch more
+      // Use selectedDate as endDate if available, otherwise use today + 7 days
+      const endDate = selectedDate ? new Date(selectedDate) : new Date();
+      if (!selectedDate) {
+        endDate.setDate(endDate.getDate() + 7); // Include future dates
+      }
+      
       const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - 3);
+      startDate.setMonth(startDate.getMonth() - 6); // Look back 6 months
       
       const startYear = startDate.getFullYear();
       const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
@@ -311,27 +353,36 @@ export default function TimeEntriesPage() {
       const endDateStr = `${endYear}-${endMonth}-${endDay}`;
       
       const response = await apiClient.getTimeEntries({ startDate: startDateStr, endDate: endDateStr });
+      
       if (response.success && response.data) {
-        const entries = (response.data as any).timeEntries || [];
-        if (entries.length === 0) return null;
-        
-        // Filter out the current selected date and sort by date descending
-        const filteredEntries = selectedDate 
-          ? entries.filter((entry: TimeEntry) => entry.date !== selectedDate)
-          : entries;
-        
-        if (filteredEntries.length === 0) return null;
-        
-        // Sort by date descending and get the most recent entry
-        const sortedEntries = [...filteredEntries].sort((a, b) => {
-          const dateA = new Date(a.date);
-          const dateB = new Date(b.date);
-          return dateB.getTime() - dateA.getTime();
-        });
-        
-        return sortedEntries[0];
+        const fetchedEntries = (response.data as any).timeEntries || [];
+        // Merge with existing entries, avoiding duplicates
+        const existingIds = new Set(entries.map(e => e.id));
+        const newEntries = fetchedEntries.filter((e: TimeEntry) => !existingIds.has(e.id));
+        entries = [...entries, ...newEntries];
       }
-      return null;
+      
+      if (entries.length === 0) {
+        return null;
+      }
+      
+      // Filter out the current selected date and sort by date descending
+      const filteredEntries = selectedDate 
+        ? entries.filter((entry: TimeEntry) => entry.date !== selectedDate)
+        : entries;
+      
+      if (filteredEntries.length === 0) {
+        return null;
+      }
+      
+      // Sort by date descending and get the most recent entry
+      const sortedEntries = [...filteredEntries].sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      return sortedEntries[0];
     } catch (error) {
       return null;
     }
@@ -358,7 +409,45 @@ export default function TimeEntriesPage() {
       let endTimeValue = lastEntry.endTime || '17:30';
       let hasPerDiemValue = false;
       
-      if (lastEntry.isHoliday) {
+      // Check for per diem only FIRST (before other checks)
+      // Per diem only: has per diem, no start/end time, no totalHours (or 0), no special day flags
+      // Debug: Log the entry to see what we're working with
+      console.log('Last entry data:', {
+        startTime: lastEntry.startTime,
+        endTime: lastEntry.endTime,
+        totalHours: lastEntry.totalHours,
+        hasPerDiem: lastEntry.hasPerDiem,
+        perDiem: lastEntry.perDiem,
+        isHoliday: lastEntry.isHoliday,
+        sickDay: lastEntry.sickDay,
+        rotationDay: lastEntry.rotationDay,
+        isPTO: lastEntry.isPTO,
+        isTravelDay: lastEntry.isTravelDay,
+      });
+      
+      const hasPerDiem = lastEntry.hasPerDiem === true || (lastEntry.perDiem !== undefined && lastEntry.perDiem !== null && Number(lastEntry.perDiem) > 0);
+      const noTimeFields = (!lastEntry.startTime || lastEntry.startTime === null || lastEntry.startTime === '') && 
+                           (!lastEntry.endTime || lastEntry.endTime === null || lastEntry.endTime === '');
+      const noHours = !lastEntry.totalHours || lastEntry.totalHours === 0 || lastEntry.totalHours === null;
+      const noSpecialDays = !lastEntry.isHoliday && !lastEntry.sickDay && !lastEntry.rotationDay && !lastEntry.isPTO && !lastEntry.isTravelDay;
+      
+      console.log('Per diem only check:', {
+        hasPerDiem,
+        noTimeFields,
+        noHours,
+        noSpecialDays,
+        isPerDiemOnly: hasPerDiem && noTimeFields && noHours && noSpecialDays,
+      });
+      
+      // If it has per diem, no time fields, no hours, and no special days, it must be per diem only
+      const isPerDiemOnly = hasPerDiem && noTimeFields && noHours && noSpecialDays;
+      
+      if (isPerDiemOnly) {
+        entryTypeValue = 'none';
+        startTimeValue = '09:00';
+        endTimeValue = '17:00';
+        hasPerDiemValue = true;
+      } else if (lastEntry.isHoliday) {
         entryTypeValue = 'holiday';
         startTimeValue = '09:00';
         endTimeValue = '17:30';
@@ -386,11 +475,6 @@ export default function TimeEntriesPage() {
         endTimeValue = '17:30';
         const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
         hasPerDiemValue = perDiemValue > 0;
-      } else if (!lastEntry.startTime && !lastEntry.endTime && !lastEntry.totalHours && (lastEntry.perDiem !== undefined && lastEntry.perDiem > 0 || lastEntry.hasPerDiem)) {
-        entryTypeValue = 'none';
-        startTimeValue = '09:00';
-        endTimeValue = '17:00';
-        hasPerDiemValue = true;
       } else {
         entryTypeValue = 'regular';
         startTimeValue = lastEntry.startTime || '09:00';
@@ -550,11 +634,7 @@ export default function TimeEntriesPage() {
         entryData.endTime = null;
       }
 
-      if (selectedProject) {
-        entryData.projectId = selectedProject;
-      } else {
-        entryData.projectId = null;
-      }
+      entryData.projectId = selectedProject;
 
       let response;
       if (editingEntry) {
@@ -598,6 +678,45 @@ export default function TimeEntriesPage() {
       setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearWeek = async () => {
+    try {
+      setError('');
+      setClearingWeek(true);
+      
+      const weekEntries = getCurrentWeekDraftEntries();
+      
+      if (weekEntries.length === 0) {
+        setError('No entries to delete for this week.');
+        setClearingWeek(false);
+        setShowClearWeekConfirm(false);
+        return;
+      }
+
+      const deletePromises = weekEntries.map(entry => 
+        apiClient.deleteTimeEntry(entry.id).catch(err => {
+          return { success: false, error: err.message };
+        })
+      );
+
+      const results = await Promise.all(deletePromises);
+      const failed = results.filter(r => !r.success);
+      
+      if (failed.length > 0) {
+        setError(`Failed to delete ${failed.length} ${failed.length === 1 ? 'entry' : 'entries'}.`);
+      } else {
+        setSuccess(`Successfully cleared ${weekEntries.length} ${weekEntries.length === 1 ? 'entry' : 'entries'} from this week.`);
+        setTimeout(() => setSuccess(''), 5000);
+      }
+      
+      await loadTimeEntries();
+      setShowClearWeekConfirm(false);
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Failed to clear week entries');
+    } finally {
+      setClearingWeek(false);
     }
   };
 
@@ -939,6 +1058,7 @@ export default function TimeEntriesPage() {
       const entry = getEntryForDate(date);
       const dayClass = getDayClass(date);
       const dayInfo = getDayInfo(date);
+      const isLocked = isDateLocked(date);
       
       const dayNumber = String(currentDay.getDate()).padStart(2, '0');
       const monthNumber = String(currentDay.getMonth() + 1).padStart(2, '0');
@@ -949,7 +1069,9 @@ export default function TimeEntriesPage() {
           <div className={styles.dayNumber}>{dateDisplay}</div>
           <div
             className={dayClass}
-            onClick={() => handleDateClick(date)}
+            onClick={isLocked ? undefined : () => handleDateClick(date)}
+            style={isLocked ? { cursor: 'not-allowed', opacity: 0.6 } : { cursor: 'pointer' }}
+            title={isLocked ? 'This date is part of a submitted/approved pay period and cannot be edited' : undefined}
           >
             {dayInfo.type && (
               <div className={styles.dayContent}>
@@ -959,6 +1081,11 @@ export default function TimeEntriesPage() {
                     {dayInfo.details.map((detail, idx) => (
                       <div key={idx} className={styles.dayDetailItem}>{detail}</div>
                     ))}
+                  </div>
+                )}
+                {entry?.project && (
+                  <div className={styles.dayDetails} style={{ marginTop: '0.25rem', fontStyle: 'italic' }}>
+                    <div className={styles.dayDetailItem}>{entry.project.name}</div>
                   </div>
                 )}
               </div>
@@ -1020,31 +1147,6 @@ export default function TimeEntriesPage() {
           <button onClick={handleNextWeek} className={styles.monthButton}>›</button>
         </div>
 
-        {(() => {
-          const currentPayPeriod = getCurrentWeekPayPeriod();
-          const canSubmit = currentPayPeriod === null || 
-                           currentPayPeriod.status === 'DRAFT' || 
-                           currentPayPeriod.status === 'REJECTED';
-          const draftEntries = getCurrentWeekDraftEntries();
-          
-          if (canSubmit && draftEntries.length > 0) {
-            return (
-              <div className={styles.submitSection}>
-                <p className={styles.submitInfo}>
-                  You have {draftEntries.length} draft {draftEntries.length === 1 ? 'entry' : 'entries'} for this week.
-                </p>
-                <button 
-                  onClick={handleSubmitPayPeriod} 
-                  className={styles.submitButton}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Submitting...' : currentPayPeriod?.status === 'REJECTED' ? 'Resubmit Pay Period' : 'Submit Week for Review'}
-                </button>
-              </div>
-            );
-          }
-          return null;
-        })()}
 
         <div className={styles.calendar}>
           <div className={styles.weekDays}>
@@ -1058,6 +1160,46 @@ export default function TimeEntriesPage() {
           <div className={styles.daysGrid}>
             {renderCalendar()}
           </div>
+        </div>
+
+        <div className={styles.clearWeekSection}>
+          {(() => {
+            const currentPayPeriod = getCurrentWeekPayPeriod();
+            const canSubmit = currentPayPeriod === null || 
+                             currentPayPeriod.status === 'DRAFT' || 
+                             currentPayPeriod.status === 'REJECTED';
+            const draftEntries = getCurrentWeekDraftEntries();
+            const hasEntries = draftEntries.length > 0;
+            
+            // Check if pay period has started (pay period starts on Monday of the current week)
+            const payPeriodStarted = (() => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const weekStart = new Date(currentWeekStart);
+              weekStart.setHours(0, 0, 0, 0);
+              return today >= weekStart;
+            })();
+            
+            return (
+              <>
+                <button 
+                  onClick={handleSubmitPayPeriod} 
+                  className={styles.submitButton}
+                  disabled={submitting || !canSubmit || !hasEntries || !payPeriodStarted}
+                  title={!payPeriodStarted ? 'Cannot submit until the pay period start date has been reached' : ''}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Week'}
+                </button>
+                <button 
+                  onClick={() => setShowClearWeekConfirm(true)} 
+                  className={styles.clearWeekButton}
+                  disabled={submitting || clearingWeek || !canSubmit || !hasEntries}
+                >
+                  {clearingWeek ? 'Clearing...' : 'Clear Week'}
+                </button>
+              </>
+            );
+          })()}
         </div>
 
         {(() => {
@@ -1158,18 +1300,6 @@ export default function TimeEntriesPage() {
                 day: 'numeric',
               })}
             </p>
-
-            {!editingEntry && (
-              <div className={styles.sameAsLastButtonContainer}>
-                <button
-                  type="button"
-                  onClick={handleSameAsLastDay}
-                  className={styles.sameAsLastButton}
-                >
-                  Same as Last Day
-                </button>
-              </div>
-            )}
 
             <div className={styles.form}>
               <div className={styles.formGroup}>
@@ -1281,16 +1411,16 @@ export default function TimeEntriesPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.label}>Project (Optional)</label>
+                <label className={styles.label}>Project *</label>
                 <select
                   value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
                   className={styles.input}
+                  required
                 >
-                  <option value="">No Project</option>
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
-                      {project.name} - {project.clientName}
+                      {project.name} - {project.jobNumber}
                     </option>
                   ))}
                 </select>
@@ -1476,6 +1606,16 @@ export default function TimeEntriesPage() {
                 >
                   Cancel
                 </button>
+                {!editingEntry && (
+                  <button
+                    type="button"
+                    onClick={handleSameAsLastDay}
+                    disabled={loading}
+                    className={styles.saveButton}
+                  >
+                    Same as Last Day
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1508,6 +1648,41 @@ export default function TimeEntriesPage() {
               <button
                 onClick={() => setShowSubmitConfirm(false)}
                 disabled={submitting}
+                className={styles.cancelConfirmButton}
+              >
+                No, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Week Confirmation Modal */}
+      {showClearWeekConfirm && (
+        <div className={styles.modalOverlay} onClick={() => !clearingWeek && setShowClearWeekConfirm(false)}>
+          <div className={styles.confirmModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.confirmModalHeader}>
+              <h2 className={styles.confirmModalTitle}>⚠️ Clear Week</h2>
+            </div>
+            <div className={styles.confirmModalBody}>
+              <p className={styles.confirmModalMessage}>
+                Are you sure you want to delete <strong>all entries</strong> for this week?
+              </p>
+              <p className={styles.confirmModalSubMessage}>
+                This action cannot be undone. Only draft and rejected entries will be deleted.
+              </p>
+            </div>
+            <div className={styles.confirmModalActions}>
+              <button
+                onClick={handleClearWeek}
+                disabled={clearingWeek}
+                className={styles.confirmButton}
+              >
+                {clearingWeek ? 'Clearing...' : 'Yes, Clear Week'}
+              </button>
+              <button
+                onClick={() => setShowClearWeekConfirm(false)}
+                disabled={clearingWeek}
                 className={styles.cancelConfirmButton}
               >
                 No, Cancel
