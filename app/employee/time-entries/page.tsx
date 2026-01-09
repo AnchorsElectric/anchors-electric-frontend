@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import styles from './time-entries.module.scss';
 
-type EntryType = 'regular' | 'pto' | 'sick' | 'rotation' | 'travel' | 'holiday' | 'none';
+type EntryType = 'regular' | 'pto' | 'sick' | 'rotation' | 'travel' | 'holiday' | 'unpaidLeave' | 'none';
 
 interface TimeEntry {
   id: string;
@@ -21,6 +21,7 @@ interface TimeEntry {
   isTravelDay: boolean;
   isPTO: boolean;
   isHoliday: boolean;
+  isUnpaidLeave?: boolean;
   payPeriodId?: string | null;
   projectId?: string | null;
   payPeriod?: {
@@ -62,6 +63,8 @@ export default function TimeEntriesPage() {
   const [clearingWeek, setClearingWeek] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
   const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
+  const [ptoDaysLeft, setPtoDaysLeft] = useState<number | null>(null);
+  const [sickDaysLeft, setSickDaysLeft] = useState<number | null>(null);
   const [payPeriods, setPayPeriods] = useState<Array<{ id: string; startDate: string; endDate: string; status: string }>>([]);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
@@ -96,8 +99,12 @@ export default function TimeEntriesPage() {
           if (user.employee.currentProjectId) {
             setCurrentProjectId(user.employee.currentProjectId);
           }
+          setPtoDaysLeft(user.employee.ptoDaysLeft ?? null);
+          setSickDaysLeft(user.employee.sickDaysLeft ?? null);
         } else {
           setHasEmployeeProfile(false);
+          setPtoDaysLeft(null);
+          setSickDaysLeft(null);
         }
       }
     } catch (err: any) {
@@ -231,11 +238,14 @@ export default function TimeEntriesPage() {
     return day === 0 || day === 6; // Sunday = 0, Saturday = 6
   };
 
-  const handleDateClick = (date: string) => {
+  const handleDateClick = async (date: string) => {
     if (!hasEmployeeProfile) {
       setError('Employee profile not found. Please contact an administrator to create your employee profile before adding time entries.');
       return;
     }
+
+    // Reload profile to get latest PTO days count
+    await loadProfile();
 
     // Check if date is locked (pay period is SUBMITTED, APPROVED, or PAID)
     if (isDateLocked(date)) {
@@ -289,6 +299,10 @@ export default function TimeEntriesPage() {
           setEntryType('rotation');
           setStartTime(existingEntry.startTime || '09:00');
           setEndTime(existingEntry.endTime || '17:30');
+        } else if (existingEntry.isUnpaidLeave) {
+          setEntryType('unpaidLeave');
+          setStartTime(null);
+          setEndTime(null);
         } else if (existingEntry.isTravelDay) {
           setEntryType('travel');
           setStartTime(existingEntry.startTime || '09:00');
@@ -465,6 +479,11 @@ export default function TimeEntriesPage() {
         endTimeValue = '17:30';
         const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
         hasPerDiemValue = perDiemValue > 0;
+      } else if (lastEntry.isUnpaidLeave) {
+        entryTypeValue = 'unpaidLeave';
+        startTimeValue = null;
+        endTimeValue = null;
+        hasPerDiemValue = false;
       } else if (lastEntry.isPTO) {
         entryTypeValue = 'pto';
         startTimeValue = '09:00';
@@ -501,6 +520,7 @@ export default function TimeEntriesPage() {
         isTravelDay: false,
         isPTO: false,
         isHoliday: false,
+        isUnpaidLeave: false,
       };
 
       if (entryTypeValue === 'regular') {
@@ -531,6 +551,11 @@ export default function TimeEntriesPage() {
         entryData.hasPerDiem = hasPerDiemValue;
         entryData.startTime = '09:00';
         entryData.endTime = '17:30';
+      } else if (entryTypeValue === 'unpaidLeave') {
+        entryData.isUnpaidLeave = true;
+        entryData.startTime = null;
+        entryData.endTime = null;
+        entryData.hasPerDiem = false;
       } else if (entryTypeValue === 'none') {
         entryData.hasPerDiem = true;
         entryData.startTime = null;
@@ -551,6 +576,10 @@ export default function TimeEntriesPage() {
 
       if (response.success) {
         await loadTimeEntries();
+        // Reload profile to get updated PTO days if a PTO entry was created/updated
+        if (entryTypeValue === 'pto' || editingEntry?.isPTO) {
+          await loadProfile();
+        }
         setShowModal(false);
         setSelectedDate(null);
         setEditingEntry(null);
@@ -593,6 +622,7 @@ export default function TimeEntriesPage() {
         isTravelDay: false,
         isPTO: false,
         isHoliday: false,
+        isUnpaidLeave: false,
       };
 
       if (entryType === 'regular') {
@@ -628,6 +658,11 @@ export default function TimeEntriesPage() {
         entryData.hasPerDiem = hasPerDiem;
         entryData.startTime = '09:00';
         entryData.endTime = '17:30';
+      } else if (entryType === 'unpaidLeave') {
+        entryData.isUnpaidLeave = true;
+        entryData.startTime = null;
+        entryData.endTime = null;
+        entryData.hasPerDiem = false;
       } else if (entryType === 'none') {
         entryData.hasPerDiem = true;
         entryData.startTime = null;
@@ -644,10 +679,21 @@ export default function TimeEntriesPage() {
       }
 
       if (response.success) {
+        await loadTimeEntries();
+        // Reload profile to get updated PTO/sick days if a PTO/sick day entry was created/updated/deleted
+        const wasPTO = entryType === 'pto' || editingEntry?.isPTO;
+        const wasSickDay = entryType === 'sick' || editingEntry?.sickDay;
+        if (wasPTO || wasSickDay) {
+          await loadProfile();
+        }
         setShowModal(false);
         setSelectedDate(null);
         setEditingEntry(null);
-        await loadTimeEntries();
+        setEntryType('regular');
+        setStartTime('09:00');
+        setEndTime('17:30');
+        setHasPerDiem(false);
+        setSelectedProject('');
       } else {
         setError(response.error || 'Failed to save time entry');
       }
@@ -664,12 +710,18 @@ export default function TimeEntriesPage() {
     try {
       setError('');
       setLoading(true);
+      const wasPTO = editingEntry.isPTO;
+      const wasSickDay = editingEntry.sickDay;
       const response = await apiClient.deleteTimeEntry(editingEntry.id);
       if (response.success) {
+        await loadTimeEntries();
+        // Reload profile to get updated PTO/sick days if a PTO/sick day entry was deleted
+        if (wasPTO || wasSickDay) {
+          await loadProfile();
+        }
         setShowModal(false);
         setSelectedDate(null);
         setEditingEntry(null);
-        loadTimeEntries();
       } else {
         setError(response.error || 'Failed to delete time entry');
       }
@@ -695,6 +747,10 @@ export default function TimeEntriesPage() {
         return;
       }
 
+      // Check if any entries are PTO or sick days before deletion
+      const hadPTOEntries = weekEntries.some(entry => entry.isPTO);
+      const hadSickDayEntries = weekEntries.some(entry => entry.sickDay);
+
       const deletePromises = weekEntries.map(entry => 
         apiClient.deleteTimeEntry(entry.id).catch(err => {
           return { success: false, error: err.message };
@@ -707,6 +763,10 @@ export default function TimeEntriesPage() {
       if (failed.length > 0) {
         setError(`Failed to delete ${failed.length} ${failed.length === 1 ? 'entry' : 'entries'}.`);
       } else {
+        // Reload profile to get updated PTO/sick days if any PTO/sick day entries were deleted
+        if (hadPTOEntries || hadSickDayEntries) {
+          await loadProfile();
+        }
         setSuccess(`Successfully cleared ${weekEntries.length} ${weekEntries.length === 1 ? 'entry' : 'entries'} from this week.`);
         setTimeout(() => setSuccess(''), 5000);
       }
@@ -779,6 +839,11 @@ export default function TimeEntriesPage() {
     let totalPerDiem = 0;
     
     weekEntries.forEach(entry => {
+      // Skip unpaid leave entries - they don't count towards any totals
+      if (entry.isUnpaidLeave) {
+        return;
+      }
+      
       // Count hours by type
       if (entry.isHoliday) {
         totalHolidayHours += 8;
@@ -1008,6 +1073,10 @@ export default function TimeEntriesPage() {
       return { type: 'ROTATION', details };
     }
     
+    if (entry.isUnpaidLeave === true) {
+      return { type: 'UNPAID_LEAVE', details: ['No hours', 'No per diem'] };
+    }
+    
     if (entry.isTravelDay === true) {
       if (entry.startTime && entry.endTime) {
         details.push(`${entry.startTime} - ${entry.endTime}`);
@@ -1075,7 +1144,7 @@ export default function TimeEntriesPage() {
           >
             {dayInfo.type && (
               <div className={styles.dayContent}>
-                <div className={styles.dayType}>{dayInfo.type}</div>
+                <div className={styles.dayType}>{dayInfo.type.replace(/_/g, ' ')}</div>
                 {dayInfo.details.length > 0 && (
                   <div className={styles.dayDetails}>
                     {dayInfo.details.map((detail, idx) => (
@@ -1372,7 +1441,7 @@ export default function TimeEntriesPage() {
                         setEndTime('17:30');
                       }}
                     />
-                    PTO
+                    PTO{ptoDaysLeft !== null && ` (${ptoDaysLeft} ${ptoDaysLeft === 1 ? 'day' : 'days'} left)`}
                     {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
                   </label>
                   <label className={styles.radioLabel}>
@@ -1388,7 +1457,7 @@ export default function TimeEntriesPage() {
                         setEndTime('17:30');
                       }}
                     />
-                    Sick Day
+                    Sick Day{sickDaysLeft !== null && ` (${sickDaysLeft} ${sickDaysLeft === 1 ? 'day' : 'days'} left)`}
                     {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
                   </label>
                   <label className={styles.radioLabel}>
@@ -1406,6 +1475,21 @@ export default function TimeEntriesPage() {
                     />
                     Holiday
                     {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="entryType"
+                      value="unpaidLeave"
+                      checked={entryType === 'unpaidLeave'}
+                      onChange={(e) => {
+                        setEntryType(e.target.value as EntryType);
+                        setStartTime(null);
+                        setEndTime(null);
+                        setHasPerDiem(false);
+                      }}
+                    />
+                    Unpaid Leave
                   </label>
                 </div>
               </div>

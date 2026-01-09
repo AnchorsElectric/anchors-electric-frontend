@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { setAuthToken } from '@/lib/utils/auth';
+import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
 import styles from './register.module.scss';
 
 export default function RegisterPage() {

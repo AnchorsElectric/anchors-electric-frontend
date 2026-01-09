@@ -216,6 +216,8 @@ class ApiClient {
       paymentType: 'HOURLY' | 'SALARY';
       hourlyRate?: number;
       salaryAmount?: number;
+      ptoDaysLeft?: number;
+      sickDaysLeft?: number;
     }
   ) {
     const response = await this.client.post<ApiResponse>(`/admin/users/${userId}/employee`, data);
@@ -233,6 +235,8 @@ class ApiClient {
       paymentType: 'HOURLY' | 'SALARY';
       hourlyRate?: number;
       salaryAmount?: number;
+      ptoDaysLeft?: number;
+      sickDaysLeft?: number;
     }
   ) {
     const response = await this.client.put<ApiResponse>(`/admin/users/${userId}/employee`, data);

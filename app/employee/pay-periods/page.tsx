@@ -20,6 +20,7 @@ interface TimeEntry {
   isTravelDay: boolean;
   isPTO: boolean;
   isHoliday: boolean;
+  isUnpaidLeave?: boolean;
   project?: {
     id: string;
     name: string;
@@ -130,6 +131,7 @@ export default function EmployeePayPeriodsPage() {
     if (entry.sickDay) return 'Sick Day';
     if (entry.rotationDay) return 'Rotation Day';
     if (entry.isTravelDay) return 'Travel Day';
+    if (entry.isUnpaidLeave) return 'Unpaid Leave';
     const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
     if (!entry.startTime && !entry.endTime && perDiemValue > 0) return 'Per Diem Only';
     return 'Regular';
@@ -214,6 +216,10 @@ export default function EmployeePayPeriodsPage() {
       return { type: 'ROTATION', details };
     }
     
+    if (entry.isUnpaidLeave === true) {
+      return { type: 'UNPAID_LEAVE', details: ['No hours', 'No per diem'] };
+    }
+    
     if (entry.isTravelDay === true) {
       if (entry.startTime && entry.endTime) {
         details.push(`${entry.startTime} - ${entry.endTime}`);
@@ -286,7 +292,7 @@ export default function EmployeePayPeriodsPage() {
             {hasContent && (
               <div className={timeEntryStyles.dayContent}>
                 {dayInfo.type && (
-                  <div className={timeEntryStyles.dayType}>{dayInfo.type}</div>
+                  <div className={timeEntryStyles.dayType}>{dayInfo.type.replace(/_/g, ' ')}</div>
                 )}
                 {dayInfo.details.length > 0 && (
                   <div className={timeEntryStyles.dayDetails}>

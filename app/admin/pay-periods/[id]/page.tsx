@@ -20,6 +20,7 @@ interface TimeEntry {
   isTravelDay: boolean;
   isPTO: boolean;
   isHoliday: boolean;
+  isUnpaidLeave?: boolean;
   project?: {
     id: string;
     name: string;
@@ -234,6 +235,10 @@ export default function AdminPayPeriodDetailPage() {
       return { type: 'ROTATION', details };
     }
     
+    if (entry.isUnpaidLeave === true) {
+      return { type: 'UNPAID_LEAVE', details: ['No hours', 'No per diem'] };
+    }
+    
     if (entry.isTravelDay === true) {
       if (entry.startTime && entry.endTime) {
         details.push(`${entry.startTime} - ${entry.endTime}`);
@@ -300,7 +305,7 @@ export default function AdminPayPeriodDetailPage() {
           <div className={dayClass}>
             {dayInfo.type && (
               <div className={timeEntryStyles.dayContent}>
-                <div className={timeEntryStyles.dayType}>{dayInfo.type}</div>
+                <div className={timeEntryStyles.dayType}>{dayInfo.type.replace(/_/g, ' ')}</div>
                 {dayInfo.details.length > 0 && (
                   <div className={timeEntryStyles.dayDetails}>
                     {dayInfo.details.map((detail, idx) => (

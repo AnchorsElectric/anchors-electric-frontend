@@ -21,6 +21,8 @@ interface User {
   employee?: {
     id: string;
     paymentType: string;
+    ptoDaysLeft?: number;
+    sickDaysLeft?: number;
   } | null;
 }
 
@@ -153,8 +155,8 @@ export default function AdminUsersPage() {
                 <th>Role</th>
                 <th>Status</th>
                 <th>Employee Profile</th>
-                <th>Email Verified</th>
-                <th>Created At</th>
+                <th>PTO Days</th>
+                <th>Sick Days</th>
               </tr>
             </thead>
             <tbody>
@@ -199,13 +201,15 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td>
-                      {user.emailVerified ? (
-                        <span className={styles.verified}>✓ Verified</span>
-                      ) : (
-                        <span className={styles.unverified}>✗ Not Verified</span>
-                      )}
+                      {user.employee?.ptoDaysLeft !== undefined && user.employee.ptoDaysLeft !== null
+                        ? user.employee.ptoDaysLeft
+                        : 'N/A'}
                     </td>
-                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      {user.employee?.sickDaysLeft !== undefined && user.employee.sickDaysLeft !== null
+                        ? user.employee.sickDaysLeft
+                        : 'N/A'}
+                    </td>
                   </tr>
                 ))
               )}
