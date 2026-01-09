@@ -33,11 +33,9 @@ function LoginContent() {
         const { token, user } = response.data as { token: string; user: any };
         setAuthToken(token);
         
-        // Redirect based on user role
         if (user?.role === 'ADMIN') {
           router.push('/admin/profile');
         } else {
-          // All non-admin users go to employee profile page
           router.push('/employee/profile');
         }
       } else {

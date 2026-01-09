@@ -20,7 +20,6 @@ class ApiClient {
       },
     });
 
-    // Request interceptor to add auth token
     this.client.interceptors.request.use(
       (config) => {
         if (typeof window !== 'undefined') {
@@ -36,19 +35,15 @@ class ApiClient {
       }
     );
 
-    // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError<ApiResponse>) => {
         if (error.response?.status === 401) {
-          // Only redirect if it's not a projects endpoint, not a login/auth endpoint, and not a password change endpoint
-          // (login/auth/password change endpoints should show their own error messages)
           const url = error.config?.url || '';
           if (!url.includes('/projects') && 
               !url.includes('/auth/login') && 
               !url.includes('/auth/register') &&
               !url.includes('/profile/change-password')) {
-            // Unauthorized - clear token and redirect to login
             if (typeof window !== 'undefined') {
               localStorage.removeItem('auth_token');
               window.location.href = '/login';
@@ -60,7 +55,6 @@ class ApiClient {
     );
   }
 
-  // Auth methods
   async register(data: {
     firstName: string;
     middleName?: string;
@@ -110,7 +104,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Profile methods
   async getProfile() {
     const response = await this.client.get<ApiResponse>('/profile');
     return response.data;
@@ -153,7 +146,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Admin methods
   async getUsers(search?: string) {
     const params = search ? `?search=${encodeURIComponent(search)}` : '';
     const response = await this.client.get<ApiResponse>(`/admin/users${params}`);
@@ -243,7 +235,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Time Entry methods
   async getTimeEntries(params?: { payPeriodId?: string; startDate?: string; endDate?: string }) {
     const queryParams = new URLSearchParams();
     if (params?.payPeriodId) queryParams.append('payPeriodId', params.payPeriodId);
@@ -291,7 +282,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Pay Period methods
   async getPayPeriods(params?: { status?: string }) {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
@@ -327,7 +317,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Admin pay period methods
   async getSubmittedPayPeriods(params?: { status?: string; employeeId?: string; startDate?: string; endDate?: string }) {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append('status', params.status);
@@ -361,7 +350,6 @@ class ApiClient {
     return response.data;
   }
 
-  // Project methods
   async getProjects() {
     const response = await this.client.get<ApiResponse>('/projects');
     return response.data;

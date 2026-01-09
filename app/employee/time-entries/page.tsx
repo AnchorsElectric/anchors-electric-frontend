@@ -14,8 +14,8 @@ interface TimeEntry {
   startTime: string | null;
   endTime: string | null;
   totalHours: number | null;
-  hasPerDiem: boolean; // For backward compatibility, derived from perDiem
-  perDiem?: number; // Numeric value: 0, 0.75, or 1
+  hasPerDiem: boolean;
+  perDiem?: number;
   sickDay: boolean;
   rotationDay?: boolean;
   isTravelDay: boolean;
@@ -69,8 +69,6 @@ export default function TimeEntriesPage() {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
-    // Calculate days to subtract to get to Monday (0 = Sunday, 1 = Monday, etc.)
-    // If Sunday (0), go back 6 days. Otherwise, go back (day - 1) days.
     const diff = today.getDate() - (day === 0 ? 6 : day - 1);
     const weekStart = new Date(today.setDate(diff));
     weekStart.setHours(0, 0, 0, 0);
@@ -108,7 +106,6 @@ export default function TimeEntriesPage() {
         }
       }
     } catch (err: any) {
-      // Silently fail - current project is optional
       setHasEmployeeProfile(false);
     }
   };
@@ -121,10 +118,7 @@ export default function TimeEntriesPage() {
         setProjects(projectsData);
       }
     } catch (err: any) {
-      // Silently fail - projects are optional
-      // Don't let this error redirect to login
       if (err.response?.status === 401 || err.response?.status === 403) {
-        // Just ignore - projects are optional for employees
         return;
       }
     }
@@ -143,7 +137,6 @@ export default function TimeEntriesPage() {
         })));
       }
     } catch (err: any) {
-      // Silently fail - pay periods are optional for this check
     }
   };
 
@@ -172,7 +165,6 @@ export default function TimeEntriesPage() {
         setTimeEntries(entries);
       } else {
         setTimeEntries([]);
-        // If error is about employee profile not found, show a helpful message
         if (response.error?.includes('Employee profile not found')) {
           setError('Employee profile not found. Please contact an administrator to create your employee profile.');
         } else {
@@ -181,7 +173,6 @@ export default function TimeEntriesPage() {
       }
     } catch (err: any) {
       setTimeEntries([]);
-      // If error is about employee profile not found, show a helpful message
       if (err.response?.data?.error?.includes('Employee profile not found') || err.response?.status === 404) {
         setError('Employee profile not found. Please contact an administrator to create your employee profile.');
       } else {
@@ -193,17 +184,14 @@ export default function TimeEntriesPage() {
   };
 
   const isDateLocked = (date: string): boolean => {
-    // First check if the current week's pay period is SUBMITTED or APPROVED
     const currentPayPeriod = getCurrentWeekPayPeriod();
     if (currentPayPeriod) {
       const status = currentPayPeriod.status;
-      // Lock if SUBMITTED, APPROVED, or PAID, allow editing if DRAFT or REJECTED
       if (status === 'SUBMITTED' || status === 'APPROVED' || status === 'PAID') {
         return true;
       }
     }
     
-    // Also check individual entry's pay period status (for backwards compatibility)
     const entry = timeEntries.find(e => e.date === date);
     if (entry && entry.payPeriodId && entry.payPeriod) {
       const status = entry.payPeriod.status;
@@ -235,7 +223,7 @@ export default function TimeEntriesPage() {
   const isWeekend = (date: string): boolean => {
     const dateObj = new Date(date + 'T00:00:00');
     const day = dateObj.getDay();
-    return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+    return day === 0 || day === 6;
   };
 
   const handleDateClick = async (date: string) => {
@@ -244,10 +232,8 @@ export default function TimeEntriesPage() {
       return;
     }
 
-    // Reload profile to get latest PTO days count
     await loadProfile();
 
-    // Check if date is locked (pay period is SUBMITTED, APPROVED, or PAID)
     if (isDateLocked(date)) {
       setError('This date is part of a submitted/approved pay period and cannot be edited');
       return;
@@ -257,7 +243,6 @@ export default function TimeEntriesPage() {
     
     if (existingEntry) {
       
-      // Check if weekend and entry type is not allowed on weekends
       if (isWeekend(date)) {
         if (existingEntry.isPTO || existingEntry.isHoliday || existingEntry.sickDay || existingEntry.rotationDay) {
           setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
@@ -316,13 +301,11 @@ export default function TimeEntriesPage() {
           setStartTime(existingEntry.startTime || '09:00');
           setEndTime(existingEntry.endTime || '17:30');
         }
-        // Convert perDiem numeric value back to boolean for checkbox
         const perDiemValue = existingEntry.perDiem !== undefined ? existingEntry.perDiem : (existingEntry.hasPerDiem ? 1 : 0);
         setHasPerDiem(perDiemValue > 0);
         setSelectedProject(existingEntry.projectId || currentProjectId || '');
       }
     } else {
-      // Check if date is in a locked pay period
       if (isDateLocked(date)) {
         setError('This date is part of a submitted/approved/paid pay period and cannot be edited');
         return;
@@ -333,7 +316,6 @@ export default function TimeEntriesPage() {
       setStartTime('09:00');
       setEndTime('17:30');
       setHasPerDiem(false);
-      // Set default project to current project if available, otherwise first project
       setSelectedProject(currentProjectId || (projects.length > 0 ? projects[0].id : ''));
     }
     
@@ -343,18 +325,15 @@ export default function TimeEntriesPage() {
 
   const getLastLoggedEntry = async (): Promise<TimeEntry | null> => {
     try {
-      // First, try to use already-loaded entries from the current week
       let entries = [...timeEntries];
       
-      // If we don't have entries or need to look further back, fetch more
-      // Use selectedDate as endDate if available, otherwise use today + 7 days
       const endDate = selectedDate ? new Date(selectedDate) : new Date();
       if (!selectedDate) {
-        endDate.setDate(endDate.getDate() + 7); // Include future dates
+        endDate.setDate(endDate.getDate() + 7);
       }
       
       const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - 6); // Look back 6 months
+      startDate.setMonth(startDate.getMonth() - 6);
       
       const startYear = startDate.getFullYear();
       const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
@@ -370,7 +349,6 @@ export default function TimeEntriesPage() {
       
       if (response.success && response.data) {
         const fetchedEntries = (response.data as any).timeEntries || [];
-        // Merge with existing entries, avoiding duplicates
         const existingIds = new Set(entries.map(e => e.id));
         const newEntries = fetchedEntries.filter((e: TimeEntry) => !existingIds.has(e.id));
         entries = [...entries, ...newEntries];
@@ -380,7 +358,6 @@ export default function TimeEntriesPage() {
         return null;
       }
       
-      // Filter out the current selected date and sort by date descending
       const filteredEntries = selectedDate 
         ? entries.filter((entry: TimeEntry) => entry.date !== selectedDate)
         : entries;
@@ -389,7 +366,6 @@ export default function TimeEntriesPage() {
         return null;
       }
       
-      // Sort by date descending and get the most recent entry
       const sortedEntries = [...filteredEntries].sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
@@ -416,28 +392,10 @@ export default function TimeEntriesPage() {
         return;
       }
       
-      // Determine entry type and set form values
-      // Check special day types first (order matters - check more specific types first)
       let entryTypeValue: EntryType = 'regular';
       let startTimeValue = lastEntry.startTime || '09:00';
       let endTimeValue = lastEntry.endTime || '17:30';
       let hasPerDiemValue = false;
-      
-      // Check for per diem only FIRST (before other checks)
-      // Per diem only: has per diem, no start/end time, no totalHours (or 0), no special day flags
-      // Debug: Log the entry to see what we're working with
-      console.log('Last entry data:', {
-        startTime: lastEntry.startTime,
-        endTime: lastEntry.endTime,
-        totalHours: lastEntry.totalHours,
-        hasPerDiem: lastEntry.hasPerDiem,
-        perDiem: lastEntry.perDiem,
-        isHoliday: lastEntry.isHoliday,
-        sickDay: lastEntry.sickDay,
-        rotationDay: lastEntry.rotationDay,
-        isPTO: lastEntry.isPTO,
-        isTravelDay: lastEntry.isTravelDay,
-      });
       
       const hasPerDiem = lastEntry.hasPerDiem === true || (lastEntry.perDiem !== undefined && lastEntry.perDiem !== null && Number(lastEntry.perDiem) > 0);
       const noTimeFields = (!lastEntry.startTime || lastEntry.startTime === null || lastEntry.startTime === '') && 
@@ -445,15 +403,6 @@ export default function TimeEntriesPage() {
       const noHours = !lastEntry.totalHours || lastEntry.totalHours === 0 || lastEntry.totalHours === null;
       const noSpecialDays = !lastEntry.isHoliday && !lastEntry.sickDay && !lastEntry.rotationDay && !lastEntry.isPTO && !lastEntry.isTravelDay;
       
-      console.log('Per diem only check:', {
-        hasPerDiem,
-        noTimeFields,
-        noHours,
-        noSpecialDays,
-        isPerDiemOnly: hasPerDiem && noTimeFields && noHours && noSpecialDays,
-      });
-      
-      // If it has per diem, no time fields, no hours, and no special days, it must be per diem only
       const isPerDiemOnly = hasPerDiem && noTimeFields && noHours && noSpecialDays;
       
       if (isPerDiemOnly) {
@@ -502,7 +451,6 @@ export default function TimeEntriesPage() {
         hasPerDiemValue = perDiemValue > 0;
       }
       
-      // Check if weekend and trying to save restricted entry types
       if (isWeekend(selectedDate)) {
         if (entryTypeValue === 'holiday' || entryTypeValue === 'sick' || entryTypeValue === 'pto' || entryTypeValue === 'rotation') {
           setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
@@ -511,7 +459,6 @@ export default function TimeEntriesPage() {
         }
       }
       
-      // Prepare entry data
       const entryData: any = {
         date: selectedDate,
         hasPerDiem: false,
@@ -566,7 +513,6 @@ export default function TimeEntriesPage() {
         entryData.projectId = lastEntry.projectId || currentProjectId;
       }
 
-      // Save the entry
       let response;
       if (editingEntry) {
         response = await apiClient.updateTimeEntry(editingEntry.id, entryData);
@@ -576,7 +522,6 @@ export default function TimeEntriesPage() {
 
       if (response.success) {
         await loadTimeEntries();
-        // Reload profile to get updated PTO days if a PTO entry was created/updated
         if (entryTypeValue === 'pto' || editingEntry?.isPTO) {
           await loadProfile();
         }
@@ -605,7 +550,6 @@ export default function TimeEntriesPage() {
       setError('');
       setLoading(true);
 
-      // Check if weekend and trying to save restricted entry types
       if (isWeekend(selectedDate)) {
         if (entryType === 'holiday' || entryType === 'sick' || entryType === 'pto' || entryType === 'rotation') {
           setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
@@ -648,7 +592,6 @@ export default function TimeEntriesPage() {
         entryData.hasPerDiem = hasPerDiem;
         entryData.startTime = '09:00';
         entryData.endTime = '17:30';
-        // Explicitly ensure other day types are false
         entryData.sickDay = false;
         entryData.isTravelDay = false;
         entryData.isPTO = false;
@@ -680,7 +623,6 @@ export default function TimeEntriesPage() {
 
       if (response.success) {
         await loadTimeEntries();
-        // Reload profile to get updated PTO/sick days if a PTO/sick day entry was created/updated/deleted
         const wasPTO = entryType === 'pto' || editingEntry?.isPTO;
         const wasSickDay = entryType === 'sick' || editingEntry?.sickDay;
         if (wasPTO || wasSickDay) {
@@ -715,7 +657,6 @@ export default function TimeEntriesPage() {
       const response = await apiClient.deleteTimeEntry(editingEntry.id);
       if (response.success) {
         await loadTimeEntries();
-        // Reload profile to get updated PTO/sick days if a PTO/sick day entry was deleted
         if (wasPTO || wasSickDay) {
           await loadProfile();
         }
@@ -747,7 +688,6 @@ export default function TimeEntriesPage() {
         return;
       }
 
-      // Check if any entries are PTO or sick days before deletion
       const hadPTOEntries = weekEntries.some(entry => entry.isPTO);
       const hadSickDayEntries = weekEntries.some(entry => entry.sickDay);
 
@@ -763,7 +703,6 @@ export default function TimeEntriesPage() {
       if (failed.length > 0) {
         setError(`Failed to delete ${failed.length} ${failed.length === 1 ? 'entry' : 'entries'}.`);
       } else {
-        // Reload profile to get updated PTO/sick days if any PTO/sick day entries were deleted
         if (hadPTOEntries || hadSickDayEntries) {
           await loadProfile();
         }
@@ -799,10 +738,6 @@ export default function TimeEntriesPage() {
     const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
     
     return timeEntries.filter(entry => {
-      // Include entries that are either:
-      // 1. Not in any pay period (draft)
-      // 2. In a DRAFT pay period (can be resubmitted)
-      // 3. In a REJECTED pay period (will be converted to DRAFT when edited)
       if (entry.payPeriodId && entry.payPeriod) {
         const status = entry.payPeriod.status;
         if (status !== 'DRAFT' && status !== 'REJECTED') {
@@ -839,12 +774,10 @@ export default function TimeEntriesPage() {
     let totalPerDiem = 0;
     
     weekEntries.forEach(entry => {
-      // Skip unpaid leave entries - they don't count towards any totals
       if (entry.isUnpaidLeave) {
         return;
       }
       
-      // Count hours by type
       if (entry.isHoliday) {
         totalHolidayHours += 8;
       } else if (entry.sickDay) {
@@ -856,18 +789,15 @@ export default function TimeEntriesPage() {
       } else if (entry.isPTO) {
         totalPtoHours += 8;
       } else {
-        // Regular hours
         if (entry.totalHours !== null && entry.totalHours !== undefined) {
           totalHours += entry.totalHours;
         }
       }
       
-      // Sum per diem values
       const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
       totalPerDiem += perDiemValue;
     });
     
-    // Calculate overtime (hours over 40)
     const overtimeHours = totalHours > 40 ? totalHours - 40 : 0;
     
     return {
@@ -892,7 +822,6 @@ export default function TimeEntriesPage() {
     const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
     const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, '0')}-${String(weekEnd.getDate()).padStart(2, '0')}`;
     
-    // Find any entry in this week that has a pay period
     const weekEntry = timeEntries.find(entry => {
       if (!entry.payPeriodId || !entry.payPeriod) return false;
       return entry.date >= weekStartStr && entry.date <= weekEndStr;
@@ -916,7 +845,6 @@ export default function TimeEntriesPage() {
       return;
     }
 
-    // Show confirmation modal
     setShowSubmitConfirm(true);
   };
 
@@ -942,15 +870,12 @@ export default function TimeEntriesPage() {
       const endDay = String(weekEnd.getDate()).padStart(2, '0');
       const endDate = `${endYear}-${endMonth}-${endDay}`;
 
-      // Check if there's an existing DRAFT pay period for this week
       const existingPayPeriod = getCurrentWeekPayPeriod();
       let payPeriodId: string;
 
       if (existingPayPeriod && existingPayPeriod.status === 'DRAFT') {
-        // Use existing DRAFT pay period
         payPeriodId = existingPayPeriod.id;
         
-        // Update time entries
         const timeEntryIds = draftEntries.map(entry => entry.id);
         const updateResponse = await apiClient.updatePayPeriod(payPeriodId, { timeEntryIds });
         
@@ -958,7 +883,6 @@ export default function TimeEntriesPage() {
           throw new Error(updateResponse.error || 'Failed to associate time entries with pay period');
         }
       } else {
-        // Create new pay period
         const createResponse = await apiClient.createPayPeriod({ startDate, endDate });
         
         if (!createResponse.success || !createResponse.data) {
@@ -1240,7 +1164,6 @@ export default function TimeEntriesPage() {
             const draftEntries = getCurrentWeekDraftEntries();
             const hasEntries = draftEntries.length > 0;
             
-            // Check if pay period has started (pay period starts on Monday of the current week)
             const payPeriodStarted = (() => {
               const today = new Date();
               today.setHours(0, 0, 0, 0);

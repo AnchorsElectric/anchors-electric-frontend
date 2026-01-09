@@ -20,7 +20,6 @@ function DashboardContent() {
       return;
     }
 
-    // Immediately redirect - don't show dashboard
     checkAdminStatus();
   }, [router]);
 
@@ -32,20 +31,16 @@ function DashboardContent() {
         const isUserAdmin = (response.data as any).isAdmin || false;
         setIsAdmin(isUserAdmin);
         
-        // Check if user has employee profile
         const user = (response.data as any).user;
         const hasEmployeeProfile = user?.employee && user.employee !== null && user.employee !== undefined;
         
-        // Redirect based on role
         if (isUserAdmin) {
           router.push('/admin/profile');
         } else {
-          // Always redirect non-admin users to employee profile page (even without employee profile)
           router.push('/employee/profile');
         }
       }
     } catch (err) {
-      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -56,7 +51,6 @@ function DashboardContent() {
     router.push('/login');
   };
 
-  // Always redirect - never show dashboard content
   if (loading) {
     return (
       <div className={styles.container}>
@@ -67,7 +61,6 @@ function DashboardContent() {
     );
   }
 
-  // Should not reach here as checkAdminStatus redirects
   return null;
 }
 

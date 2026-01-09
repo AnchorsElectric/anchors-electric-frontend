@@ -41,7 +41,6 @@ export default function AdminUsersPage() {
       return;
     }
 
-    // Check if user is admin
     checkAdminStatus();
     loadUsers();
   }, [router]);

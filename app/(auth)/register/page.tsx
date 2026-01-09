@@ -39,7 +39,6 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Format phone number if it's the phone field
     if (name === 'phone') {
       const formatted = formatPhoneNumber(value);
       setFormData(prev => ({
@@ -58,7 +57,6 @@ export default function RegisterPage() {
   const handleEmergencyContactChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Format phone number if it's the phone field
     if (name === 'phone') {
       const formatted = formatPhoneNumber(value);
       setFormData(prev => ({

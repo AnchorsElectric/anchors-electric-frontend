@@ -270,11 +270,8 @@ export default function UserDetailPage() {
         setEmployeeProjectId('');
       }
     } catch (err: any) {
-      // 404 means no employee profile exists yet, which is fine
-      // Silently handle the error - don't log it or show it to the user
       if (err.response?.status !== 404) {
-        // Only log non-404 errors
-        console.error('Error loading employee profile:', err);
+        setError('Failed to load employee profile');
       }
       setEmployeeProfile(null);
       setEmployeeProjectId('');
@@ -551,7 +548,6 @@ export default function UserDetailPage() {
         setError(response.error || 'Failed to deactivate user');
       }
     } catch (err: any) {
-      console.error('Deactivate user error:', err);
       setError(err.response?.data?.error || err.message || 'Failed to deactivate user');
     } finally {
       setSaving(false);
