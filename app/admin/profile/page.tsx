@@ -30,6 +30,11 @@ export default function AdminProfilePage() {
       email: '',
       relationship: '',
     },
+    pantsSize: '',
+    shirtSize: '',
+    glovesSize: '',
+    vestSize: '',
+    jacketSize: '',
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -98,6 +103,11 @@ export default function AdminProfilePage() {
             email: '',
             relationship: '',
           },
+          pantsSize: user.pantsSize || '',
+          shirtSize: user.shirtSize || '',
+          glovesSize: user.glovesSize || '',
+          vestSize: user.vestSize || '',
+          jacketSize: user.jacketSize || '',
         };
         setFormData(loadedData);
         setOriginalFormData(loadedData);
@@ -301,23 +311,19 @@ export default function AdminProfilePage() {
         zipCode: formData.zipCode,
       };
 
-      // Add emergency contact if all required fields are filled
-      if (formData.emergencyContact.firstName && 
-          formData.emergencyContact.firstName.trim() &&
-          formData.emergencyContact.lastName && 
-          formData.emergencyContact.lastName.trim() &&
-          formData.emergencyContact.phone && 
-          formData.emergencyContact.phone.trim() &&
-          formData.emergencyContact.relationship &&
-          formData.emergencyContact.relationship.trim()) {
-        payload.emergencyContact = {
-          firstName: formData.emergencyContact.firstName.trim(),
-          lastName: formData.emergencyContact.lastName.trim(),
-          phone: getPhoneDigits(formData.emergencyContact.phone),
-          email: formData.emergencyContact.email?.trim() || null,
-          relationship: formData.emergencyContact.relationship.trim(),
-        };
-      }
+      payload.emergencyContact = {
+        firstName: formData.emergencyContact.firstName.trim(),
+        lastName: formData.emergencyContact.lastName.trim(),
+        phone: getPhoneDigits(formData.emergencyContact.phone),
+        email: formData.emergencyContact.email?.trim() || null,
+        relationship: formData.emergencyContact.relationship.trim(),
+      };
+
+      if (formData.pantsSize) payload.pantsSize = formData.pantsSize;
+      if (formData.shirtSize) payload.shirtSize = formData.shirtSize;
+      if (formData.glovesSize) payload.glovesSize = formData.glovesSize;
+      if (formData.vestSize) payload.vestSize = formData.vestSize;
+      if (formData.jacketSize) payload.jacketSize = formData.jacketSize;
 
       const response = await apiClient.updateProfile(payload);
 
@@ -561,10 +567,10 @@ export default function AdminProfilePage() {
 
           {/* Emergency Contact Section */}
           <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Emergency Contact (Optional)</h2>
+            <h2 className={styles.sectionTitle}>Emergency Contact *</h2>
             <div className={styles.fields}>
               <div className={styles.field}>
-                <label htmlFor="ecFirstName">First Name</label>
+                <label htmlFor="ecFirstName">First Name *</label>
                 {isEditing ? (
                   <input
                     id="ecFirstName"
@@ -572,6 +578,7 @@ export default function AdminProfilePage() {
                     type="text"
                     value={formData.emergencyContact.firstName}
                     onChange={handleEmergencyContactChange}
+                    required
                     disabled={loading}
                   />
                 ) : (
@@ -580,7 +587,7 @@ export default function AdminProfilePage() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="ecLastName">Last Name</label>
+                <label htmlFor="ecLastName">Last Name *</label>
                 {isEditing ? (
                   <input
                     id="ecLastName"
@@ -588,6 +595,7 @@ export default function AdminProfilePage() {
                     type="text"
                     value={formData.emergencyContact.lastName}
                     onChange={handleEmergencyContactChange}
+                    required
                     disabled={loading}
                   />
                 ) : (
@@ -596,7 +604,7 @@ export default function AdminProfilePage() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="ecPhone">Phone</label>
+                <label htmlFor="ecPhone">Phone *</label>
                 {isEditing ? (
                   <input
                     id="ecPhone"
@@ -604,6 +612,7 @@ export default function AdminProfilePage() {
                     type="tel"
                     value={formData.emergencyContact.phone}
                     onChange={handleEmergencyContactChange}
+                    required
                     disabled={loading}
                     placeholder="(XXX) XXX-XXXX"
                     maxLength={14}
@@ -630,7 +639,7 @@ export default function AdminProfilePage() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="ecRelationship">Relationship</label>
+                <label htmlFor="ecRelationship">Relationship *</label>
                 {isEditing ? (
                   <input
                     id="ecRelationship"
@@ -638,11 +647,118 @@ export default function AdminProfilePage() {
                     type="text"
                     value={formData.emergencyContact.relationship}
                     onChange={handleEmergencyContactChange}
+                    required
                     placeholder="e.g., Spouse, Parent, Friend"
                     disabled={loading}
                   />
                 ) : (
                   <div className={styles.fieldValue}>{formData.emergencyContact.relationship || 'N/A'}</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Clothing Sizes Section */}
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Clothing Sizes</h2>
+            <div className={styles.fields}>
+              <div className={styles.field}>
+                <label htmlFor="pantsSize">Pants Size (Waist × Inseam)</label>
+                {isEditing ? (
+                  <select
+                    id="pantsSize"
+                    name="pantsSize"
+                    value={formData.pantsSize}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select size</option>
+                    {['28×28', '28×30', '28×32', '30×28', '30×30', '30×32', '30×34', '32×28', '32×30', '32×32', '32×34', '34×28', '34×30', '34×32', '34×34', '36×28', '36×30', '36×32', '36×34', '38×28', '38×30', '38×32', '38×34', '40×28', '40×30', '40×32', '40×34', '42×28', '42×30', '42×32', '42×34', '44×28', '44×30', '44×32', '44×34', '46×28', '46×30', '46×32', '46×34', '48×30', '48×32', '48×34', '50×30', '50×32', '50×34'].map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className={styles.fieldValue}>{formData.pantsSize || 'N/A'}</div>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="shirtSize">Shirt Size</label>
+                {isEditing ? (
+                  <select
+                    id="shirtSize"
+                    name="shirtSize"
+                    value={formData.shirtSize}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select size</option>
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className={styles.fieldValue}>{formData.shirtSize || 'N/A'}</div>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="glovesSize">Gloves Size</label>
+                {isEditing ? (
+                  <select
+                    id="glovesSize"
+                    name="glovesSize"
+                    value={formData.glovesSize}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select size</option>
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className={styles.fieldValue}>{formData.glovesSize || 'N/A'}</div>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="vestSize">Vest Size</label>
+                {isEditing ? (
+                  <select
+                    id="vestSize"
+                    name="vestSize"
+                    value={formData.vestSize}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select size</option>
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className={styles.fieldValue}>{formData.vestSize || 'N/A'}</div>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="jacketSize">Jacket Size</label>
+                {isEditing ? (
+                  <select
+                    id="jacketSize"
+                    name="jacketSize"
+                    value={formData.jacketSize}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select size</option>
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className={styles.fieldValue}>{formData.jacketSize || 'N/A'}</div>
                 )}
               </div>
             </div>

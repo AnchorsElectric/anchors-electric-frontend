@@ -121,7 +121,9 @@ export default function EmployeePayPeriodsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Parse date string manually to avoid timezone issues
+    const [year, monthNum, dayNum] = dateString.split('-').map(Number);
+    const date = new Date(year, monthNum - 1, dayNum);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 

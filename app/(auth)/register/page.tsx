@@ -34,6 +34,11 @@ export default function RegisterPage() {
       email: '',
       relationship: '',
     },
+    pantsSize: '',
+    shirtSize: '',
+    glovesSize: '',
+    vestSize: '',
+    jacketSize: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -141,6 +146,20 @@ export default function RegisterPage() {
       return false;
     }
 
+    if (!formData.emergencyContact.firstName || 
+        !formData.emergencyContact.lastName || 
+        !formData.emergencyContact.phone || 
+        !formData.emergencyContact.relationship) {
+      setError('Please fill in all required emergency contact information');
+      return false;
+    }
+
+    if (!formData.pantsSize || !formData.shirtSize || !formData.glovesSize || 
+        !formData.vestSize || !formData.jacketSize) {
+      setError('Please select all clothing sizes');
+      return false;
+    }
+
     return true;
   };
 
@@ -171,19 +190,19 @@ export default function RegisterPage() {
         ssn: formData.ssn,
       };
 
-      // Add emergency contact if any fields are filled
-      if (formData.emergencyContact.firstName || 
-          formData.emergencyContact.lastName || 
-          formData.emergencyContact.phone || 
-          formData.emergencyContact.relationship) {
-        payload.emergencyContact = {
-          firstName: formData.emergencyContact.firstName,
-          lastName: formData.emergencyContact.lastName,
-          phone: getPhoneDigits(formData.emergencyContact.phone),
-          email: formData.emergencyContact.email || undefined,
-          relationship: formData.emergencyContact.relationship,
-        };
-      }
+      payload.emergencyContact = {
+        firstName: formData.emergencyContact.firstName,
+        lastName: formData.emergencyContact.lastName,
+        phone: getPhoneDigits(formData.emergencyContact.phone),
+        email: formData.emergencyContact.email || undefined,
+        relationship: formData.emergencyContact.relationship,
+      };
+
+      payload.pantsSize = formData.pantsSize;
+      payload.shirtSize = formData.shirtSize;
+      payload.glovesSize = formData.glovesSize;
+      payload.vestSize = formData.vestSize;
+      payload.jacketSize = formData.jacketSize;
 
       const response = await apiClient.register(payload);
 
@@ -411,42 +430,136 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Emergency Contact Section */}
+          {/* Clothing Sizes Section */}
           <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Emergency Contact (Optional)</h2>
+            <h2 className={styles.sectionTitle}>Clothing Sizes *</h2>
             <div className={styles.fields}>
               <div className={styles.field}>
-                <label htmlFor="ecFirstName">First Name</label>
+                <label htmlFor="pantsSize">Pants Size (Waist × Inseam) *</label>
+                <select
+                  id="pantsSize"
+                  name="pantsSize"
+                  value={formData.pantsSize}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Select size</option>
+                  {['28×28', '28×30', '28×32', '30×28', '30×30', '30×32', '30×34', '32×28', '32×30', '32×32', '32×34', '34×28', '34×30', '34×32', '34×34', '36×28', '36×30', '36×32', '36×34', '38×28', '38×30', '38×32', '38×34', '40×28', '40×30', '40×32', '40×34', '42×28', '42×30', '42×32', '42×34', '44×28', '44×30', '44×32', '44×34', '46×28', '46×30', '46×32', '46×34', '48×30', '48×32', '48×34', '50×30', '50×32', '50×34'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="shirtSize">Shirt Size *</label>
+                <select
+                  id="shirtSize"
+                  name="shirtSize"
+                  value={formData.shirtSize}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="glovesSize">Gloves Size *</label>
+                <select
+                  id="glovesSize"
+                  name="glovesSize"
+                  value={formData.glovesSize}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="vestSize">Vest Size *</label>
+                <select
+                  id="vestSize"
+                  name="vestSize"
+                  value={formData.vestSize}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="jacketSize">Jacket Size *</label>
+                <select
+                  id="jacketSize"
+                  name="jacketSize"
+                  value={formData.jacketSize}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Emergency Contact Section */}
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Emergency Contact *</h2>
+            <div className={styles.fields}>
+              <div className={styles.field}>
+                <label htmlFor="ecFirstName">First Name *</label>
                 <input
                   id="ecFirstName"
                   name="firstName"
                   type="text"
                   value={formData.emergencyContact.firstName}
                   onChange={handleEmergencyContactChange}
+                  required
                   disabled={loading}
                 />
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="ecLastName">Last Name</label>
+                <label htmlFor="ecLastName">Last Name *</label>
                 <input
                   id="ecLastName"
                   name="lastName"
                   type="text"
                   value={formData.emergencyContact.lastName}
                   onChange={handleEmergencyContactChange}
+                  required
                   disabled={loading}
                 />
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="ecPhone">Phone</label>
+                <label htmlFor="ecPhone">Phone *</label>
                 <input
                   id="ecPhone"
                   name="phone"
                   type="tel"
                   value={formData.emergencyContact.phone}
                   onChange={handleEmergencyContactChange}
+                  required
                   disabled={loading}
                   placeholder="(XXX) XXX-XXXX"
                   maxLength={14}
@@ -466,13 +579,14 @@ export default function RegisterPage() {
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="ecRelationship">Relationship</label>
+                <label htmlFor="ecRelationship">Relationship *</label>
                 <input
                   id="ecRelationship"
                   name="relationship"
                   type="text"
                   value={formData.emergencyContact.relationship}
                   onChange={handleEmergencyContactChange}
+                  required
                   placeholder="e.g., Spouse, Parent, Friend"
                   disabled={loading}
                 />

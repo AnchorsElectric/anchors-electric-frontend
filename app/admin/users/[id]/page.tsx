@@ -26,6 +26,11 @@ interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  pantsSize: string | null;
+  shirtSize: string | null;
+  glovesSize: string | null;
+  vestSize: string | null;
+  jacketSize: string | null;
   emergencyContacts: Array<{
     id: string;
     firstName: string;
@@ -65,7 +70,7 @@ export default function UserDetailPage() {
   const [employeeHourlyRate, setEmployeeHourlyRate] = useState('');
   const [employeeSalaryAmount, setEmployeeSalaryAmount] = useState('');
   const [employeePtoDaysLeft, setEmployeePtoDaysLeft] = useState('10');
-  const [employeeSickDaysLeft, setEmployeeSickDaysLeft] = useState('7');
+  const [employeeSickDaysLeft, setEmployeeSickDaysLeft] = useState('5');
   const [employeeProjectId, setEmployeeProjectId] = useState<string>('');
   const [projects, setProjects] = useState<Array<{ id: string; name: string; jobNumber: string; clientName: string }>>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -92,6 +97,11 @@ export default function UserDetailPage() {
       email: '',
       relationship: '',
     },
+    pantsSize: '',
+    shirtSize: '',
+    glovesSize: '',
+    vestSize: '',
+    jacketSize: '',
   });
 
   useEffect(() => {
@@ -157,6 +167,11 @@ export default function UserDetailPage() {
             email: '',
             relationship: '',
           },
+          pantsSize: userData.pantsSize || '',
+          shirtSize: userData.shirtSize || '',
+          glovesSize: userData.glovesSize || '',
+          vestSize: userData.vestSize || '',
+          jacketSize: userData.jacketSize || '',
         });
         
         // If user has employee profile, load it
@@ -189,8 +204,8 @@ export default function UserDetailPage() {
             profile.sickDaysLeft = userData.employee.sickDaysLeft;
             setEmployeeSickDaysLeft(userData.employee.sickDaysLeft.toString());
           } else {
-            profile.sickDaysLeft = 7;
-            setEmployeeSickDaysLeft('7');
+            profile.sickDaysLeft = 5;
+            setEmployeeSickDaysLeft('5');
           }
           setEmployeeProfile(profile);
           setEmployeePaymentType(userData.employee.paymentType || 'HOURLY');
@@ -199,7 +214,7 @@ export default function UserDetailPage() {
           setEmployeeProfile(null);
           setEmployeeProjectId('');
           setEmployeePtoDaysLeft('10');
-          setEmployeeSickDaysLeft('7');
+          setEmployeeSickDaysLeft('5');
         }
       } else {
         setError(response.error || 'Failed to load user');
@@ -259,8 +274,8 @@ export default function UserDetailPage() {
           profile.sickDaysLeft = employee.sickDaysLeft;
           setEmployeeSickDaysLeft(employee.sickDaysLeft.toString());
         } else {
-          profile.sickDaysLeft = 7;
-          setEmployeeSickDaysLeft('7');
+          profile.sickDaysLeft = 5;
+          setEmployeeSickDaysLeft('5');
         }
         setEmployeeProfile(profile);
         setEmployeePaymentType(employee.paymentType || 'HOURLY');
@@ -369,21 +384,19 @@ export default function UserDetailPage() {
         zipCode: formData.zipCode,
       };
 
-      // Only include emergency contact if at least one field is filled
-      if (
-        formData.emergencyContact.firstName ||
-        formData.emergencyContact.lastName ||
-        formData.emergencyContact.phone ||
-        formData.emergencyContact.relationship
-      ) {
-        updateData.emergencyContact = {
-          firstName: formData.emergencyContact.firstName,
-          lastName: formData.emergencyContact.lastName,
-          phone: getPhoneDigits(formData.emergencyContact.phone),
-          email: formData.emergencyContact.email || null,
-          relationship: formData.emergencyContact.relationship,
-        };
-      }
+      updateData.emergencyContact = {
+        firstName: formData.emergencyContact.firstName,
+        lastName: formData.emergencyContact.lastName,
+        phone: getPhoneDigits(formData.emergencyContact.phone),
+        email: formData.emergencyContact.email || null,
+        relationship: formData.emergencyContact.relationship,
+      };
+
+      if (formData.pantsSize) updateData.pantsSize = formData.pantsSize;
+      if (formData.shirtSize) updateData.shirtSize = formData.shirtSize;
+      if (formData.glovesSize) updateData.glovesSize = formData.glovesSize;
+      if (formData.vestSize) updateData.vestSize = formData.vestSize;
+      if (formData.jacketSize) updateData.jacketSize = formData.jacketSize;
 
       const userResponse = await apiClient.updateUserById(userId, updateData);
 
@@ -630,7 +643,7 @@ export default function UserDetailPage() {
                       setEmployeeProjectId('');
                     }
                     setEmployeePtoDaysLeft(employeeProfile.ptoDaysLeft?.toString() || '10');
-                    setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '7');
+                    setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '5');
                   }
                   setIsEditing(true);
                 }} className={styles.editButton}>
@@ -647,7 +660,7 @@ export default function UserDetailPage() {
                   setEmployeeSalaryAmount('');
                   setEmployeeProjectId(projects.length > 0 ? projects[0].id : '');
                   setEmployeePtoDaysLeft('10');
-                  setEmployeeSickDaysLeft('7');
+                  setEmployeeSickDaysLeft('5');
                   setShowEmployeeModal(true);
                 }} className={styles.createEmployeeButton}>
                   Create Employee Profile
@@ -994,6 +1007,108 @@ export default function UserDetailPage() {
           </div>
         </div>
 
+        {/* Clothing Sizes */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>Clothing Sizes</h2>
+          <div className={styles.grid}>
+            <div className={styles.field}>
+              <label>Pants Size (Waist × Inseam)</label>
+              {isEditing ? (
+                <select
+                  name="pantsSize"
+                  value={formData.pantsSize}
+                  onChange={handleChange}
+                  className={styles.input}
+                  disabled={saving}
+                >
+                  <option value="">Select size</option>
+                  {['28×28', '28×30', '28×32', '30×28', '30×30', '30×32', '30×34', '32×28', '32×30', '32×32', '32×34', '34×28', '34×30', '34×32', '34×34', '36×28', '36×30', '36×32', '36×34', '38×28', '38×30', '38×32', '38×34', '40×28', '40×30', '40×32', '40×34', '42×28', '42×30', '42×32', '42×34', '44×28', '44×30', '44×32', '44×34', '46×28', '46×30', '46×32', '46×34', '48×30', '48×32', '48×34', '50×30', '50×32', '50×34'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className={styles.value}>{user.pantsSize || 'N/A'}</div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label>Shirt Size</label>
+              {isEditing ? (
+                <select
+                  name="shirtSize"
+                  value={formData.shirtSize}
+                  onChange={handleChange}
+                  className={styles.input}
+                  disabled={saving}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className={styles.value}>{user.shirtSize || 'N/A'}</div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label>Gloves Size</label>
+              {isEditing ? (
+                <select
+                  name="glovesSize"
+                  value={formData.glovesSize}
+                  onChange={handleChange}
+                  className={styles.input}
+                  disabled={saving}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className={styles.value}>{user.glovesSize || 'N/A'}</div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label>Vest Size</label>
+              {isEditing ? (
+                <select
+                  name="vestSize"
+                  value={formData.vestSize}
+                  onChange={handleChange}
+                  className={styles.input}
+                  disabled={saving}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className={styles.value}>{user.vestSize || 'N/A'}</div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label>Jacket Size</label>
+              {isEditing ? (
+                <select
+                  name="jacketSize"
+                  value={formData.jacketSize}
+                  onChange={handleChange}
+                  className={styles.input}
+                  disabled={saving}
+                >
+                  <option value="">Select size</option>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className={styles.value}>{user.jacketSize || 'N/A'}</div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Employee Profile */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Employee Profile</h2>
@@ -1124,7 +1239,7 @@ export default function UserDetailPage() {
                     }
                   }}
                   className={styles.input}
-                  placeholder="7"
+                  placeholder="5"
                   required
                   disabled={saving}
                 />
@@ -1230,14 +1345,14 @@ export default function UserDetailPage() {
                   setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
                   setEmployeeProjectId(employeeProfile.currentProject?.id || '');
                   setEmployeePtoDaysLeft(employeeProfile.ptoDaysLeft?.toString() || '10');
-                  setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '7');
+                  setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '5');
                 } else {
                   setEmployeePaymentType('HOURLY');
                   setEmployeeHourlyRate('');
                   setEmployeeSalaryAmount('');
                   setEmployeeProjectId('');
                   setEmployeePtoDaysLeft('10');
-                  setEmployeeSickDaysLeft('7');
+                  setEmployeeSickDaysLeft('5');
                 }
               }}
               className={styles.cancelButton}
@@ -1470,7 +1585,7 @@ export default function UserDetailPage() {
                     }
                   }}
                   className={styles.input}
-                  placeholder="7"
+                  placeholder="5"
                   required
                   disabled={savingEmployee}
                 />

@@ -132,12 +132,16 @@ export default function AdminPayPeriodsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Parse date string manually to avoid timezone issues
+    const [year, monthNum, dayNum] = dateString.split('-').map(Number);
+    const date = new Date(year, monthNum - 1, dayNum);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const formatDateWithDay = (dateString: string) => {
-    const date = new Date(dateString);
+    // Parse date string manually to avoid timezone issues
+    const [year, monthNum, dayNum] = dateString.split('-').map(Number);
+    const date = new Date(year, monthNum - 1, dayNum);
     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
     const formattedDate = formatDate(dateString);
     return `${dayName}, ${formattedDate}`;
