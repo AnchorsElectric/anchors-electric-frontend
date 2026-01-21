@@ -401,8 +401,8 @@ export default function TimeEntriesPage() {
       }
       
       let entryTypeValue: EntryType = 'regular';
-      let startTimeValue = lastEntry.startTime || '09:00';
-      let endTimeValue = lastEntry.endTime || '17:30';
+      let startTimeValue: string | null = lastEntry.startTime || '09:00';
+      let endTimeValue: string | null = lastEntry.endTime || '17:30';
       let hasPerDiemValue = false;
       
       const hasPerDiem = lastEntry.hasPerDiem === true || (lastEntry.perDiem !== undefined && lastEntry.perDiem !== null && Number(lastEntry.perDiem) > 0);
