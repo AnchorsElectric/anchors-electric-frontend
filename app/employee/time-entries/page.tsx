@@ -1524,7 +1524,7 @@ export default function TimeEntriesPage() {
                     <label className={styles.label}>Start Time</label>
                     <input
                       type="time"
-                      value={startTime}
+                      value={startTime || ''}
                       readOnly
                       className={styles.input}
                       style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
@@ -1534,7 +1534,7 @@ export default function TimeEntriesPage() {
                     <label className={styles.label}>End Time</label>
                     <input
                       type="time"
-                      value={endTime}
+                      value={endTime || ''}
                       readOnly
                       className={styles.input}
                       style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
