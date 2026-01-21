@@ -1335,6 +1335,11 @@ export default function UserDetailPage() {
                       email: '',
                       relationship: '',
                     },
+                    pantsSize: user.pantsSize || '',
+                    shirtSize: user.shirtSize || '',
+                    glovesSize: user.glovesSize || '',
+                    vestSize: user.vestSize || '',
+                    jacketSize: user.jacketSize || '',
                   });
                 }
                 // Reset employee profile fields
