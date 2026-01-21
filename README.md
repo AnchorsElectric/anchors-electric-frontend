@@ -38,8 +38,8 @@ cd anchors-electric-frontend
 npm install
 ```
 
-3. Set up environment variables:
-Create a `.env.local` file:
+3. Set up environment variables (optional):
+The app defaults to the production backend. For local development, create a `.env.local` file:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
@@ -107,7 +107,7 @@ docker-compose up -d
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (default: http://localhost:3001)
+- `NEXT_PUBLIC_API_URL` - Backend API URL (default: https://anchors-electric-backend-production.up.railway.app)
 - `FRONTEND_PORT` - Frontend port for Docker (default: 3000)
 
 ## License
