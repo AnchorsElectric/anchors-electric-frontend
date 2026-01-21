@@ -11,12 +11,13 @@
   --text-muted: #6c757d;
 }
 
-@media (prefers-color-scheme: dark) {
+/* Dark mode disabled - using light theme only */
+/* @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
-}
+} */
 
 * {
   box-sizing: border-box;
@@ -33,6 +34,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
+  color-scheme: light; /* Force light mode */
 }
 
 a {
