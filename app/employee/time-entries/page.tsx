@@ -578,8 +578,8 @@ export default function TimeEntriesPage() {
       };
 
       if (entryType === 'regular') {
-        entryData.startTime = startTime;
-        entryData.endTime = endTime;
+        entryData.startTime = startTime || '09:00';
+        entryData.endTime = endTime || '17:30';
         entryData.hasPerDiem = hasPerDiem;
       } else if (entryType === 'pto') {
         entryData.isPTO = true;
