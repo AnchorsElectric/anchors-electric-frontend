@@ -47,8 +47,8 @@ export default function TimeEntriesPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [entryType, setEntryType] = useState<EntryType>('regular');
-  const [startTime, setStartTime] = useState<string>('09:00');
-  const [endTime, setEndTime] = useState<string>('17:30');
+  const [startTime, setStartTime] = useState<string | null>('09:00');
+  const [endTime, setEndTime] = useState<string | null>('17:30');
   const [hasPerDiem, setHasPerDiem] = useState(false);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -212,11 +212,19 @@ export default function TimeEntriesPage() {
     return `${newHours}:${newMins}`;
   };
 
-  const incrementTime = (time: string, setter: (value: string) => void) => {
+  const incrementTime = (time: string | null, setter: (value: string | null) => void) => {
+    if (!time) {
+      setter('09:00');
+      return;
+    }
     setter(adjustTime(time, 30));
   };
 
-  const decrementTime = (time: string, setter: (value: string) => void) => {
+  const decrementTime = (time: string | null, setter: (value: string | null) => void) => {
+    if (!time) {
+      setter('09:00');
+      return;
+    }
     setter(adjustTime(time, -30));
   };
 
@@ -1440,8 +1448,8 @@ export default function TimeEntriesPage() {
                     <div className={styles.timeInputWrapper}>
                       <input
                         type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
+                        value={startTime || ''}
+                        onChange={(e) => setStartTime(e.target.value || null)}
                         className={styles.timeInput}
                         step="1800"
                         lang="en-GB"
@@ -1471,8 +1479,8 @@ export default function TimeEntriesPage() {
                     <div className={styles.timeInputWrapper}>
                       <input
                         type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
+                        value={endTime || ''}
+                        onChange={(e) => setEndTime(e.target.value || null)}
                         className={styles.timeInput}
                         step="1800"
                         lang="en-GB"
