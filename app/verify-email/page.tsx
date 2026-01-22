@@ -21,7 +21,12 @@ function VerifyEmailContent() {
       }
 
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        if (!API_URL) {
+          setStatus('error');
+          setMessage('API URL is not configured');
+          return;
+        }
         const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`);
         const data = await response.json();
 
