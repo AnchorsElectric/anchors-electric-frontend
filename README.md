@@ -1,98 +1,42 @@
-# Anchors Electric - Frontend
+# Anchors Electric Frontend
 
-Frontend application for Anchors Electric employee management system.
+Employee management system frontend application.
 
 ## Tech Stack
 
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript
-- **Styling**: SASS/SCSS
-- **Form Handling**: React Hook Form + Zod
-- **HTTP Client**: Axios
-- **Containerization**: Docker
+- **Framework:** Next.js 14+ (App Router)
+- **Language:** TypeScript
+- **Styling:** SASS/SCSS
+- **HTTP Client:** Axios
+- **Deployment:** Vercel
 
-## Features
-
-- Employee registration and profile management
-- Admin portal for application review
-- Document upload to AWS S3
-- Emergency contact management
-- Responsive design
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
-- Docker and Docker Compose (for containerized setup)
 
 ### Installation
 
-1. Clone the repository:
+1. Clone and install:
 ```bash
 git clone https://github.com/Tech3790/anchors-electric-frontend.git
 cd anchors-electric-frontend
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Set up environment variables (optional):
-The app defaults to the production backend. For local development, create a `.env.local` file:
-```env
+2. Set up environment variables:
+```bash
+# Create .env.local
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-4. Run the development server:
+3. Start development server:
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Docker Setup
-
-### Development with Docker
-
-```bash
-# Build and start container
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop container
-docker-compose down
-```
-
-### Production Build
-
-```bash
-# Build Docker image
-docker-compose build
-
-# Run in production mode
-docker-compose up -d
-```
-
-## Project Structure
-
-```
-├── app/                    # Next.js app directory
-│   ├── (auth)/            # Authentication pages
-│   ├── (employee)/        # Employee portal pages
-│   ├── (admin)/           # Admin portal pages
-│   └── layout.tsx         # Root layout
-├── components/            # React components
-│   ├── ui/               # UI components
-│   └── forms/            # Form components
-├── lib/                   # Utilities
-│   ├── api/              # API client
-│   ├── types/            # TypeScript types
-│   └── utils/            # Helper functions
-└── public/                # Static assets
-```
 
 ## Available Scripts
 
@@ -100,15 +44,37 @@ docker-compose up -d
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
-- `npm run docker:build` - Build Docker image
-- `npm run docker:up` - Start Docker container
-- `npm run docker:down` - Stop Docker container
-- `npm run docker:logs` - View container logs
+
+## Project Structure
+
+```
+├── app/                    # Next.js app directory
+│   ├── (auth)/            # Authentication pages
+│   ├── employee/          # Employee portal
+│   ├── admin/             # Admin portal
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+├── lib/                   # Utilities
+│   ├── api/              # API client
+│   ├── types/            # TypeScript types
+│   └── utils/            # Helper functions
+└── public/                # Static assets
+```
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (default: https://anchors-electric-backend-production.up.railway.app)
-- `FRONTEND_PORT` - Frontend port for Docker (default: 3000)
+- `NEXT_PUBLIC_API_URL` - Backend API URL
+  - Production: `https://anchors-electric-backend-production.up.railway.app`
+  - Local: `http://localhost:3001`
+
+## Documentation
+
+- [Deployment Guide](docs/DEPLOYMENT.md) - Vercel deployment instructions
+
+## Production
+
+- **Frontend URL:** `https://employees.anchorselectric.com`
+- **Backend URL:** `https://anchors-electric-backend-production.up.railway.app`
 
 ## License
 
