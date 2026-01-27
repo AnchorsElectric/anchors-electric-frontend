@@ -1321,15 +1321,17 @@ export default function TimeEntriesPage() {
                     <input
                       type="radio"
                       name="entryType"
-                      value="travel"
-                      checked={entryType === 'travel'}
+                      value="holiday"
+                      checked={entryType === 'holiday'}
+                      disabled={selectedDate ? isWeekend(selectedDate) : false}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
                         setStartTime('09:00');
                         setEndTime('17:30');
                       }}
                     />
-                    Travel Day
+                    Holiday
+                    {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
                   </label>
                   <label className={styles.radioLabel}>
                     <input
@@ -1351,18 +1353,6 @@ export default function TimeEntriesPage() {
                     <input
                       type="radio"
                       name="entryType"
-                      value="none"
-                      checked={entryType === 'none'}
-                      onChange={(e) => {
-                        setEntryType(e.target.value as EntryType);
-                      }}
-                    />
-                    Per Diem Only
-                  </label>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name="entryType"
                       value="pto"
                       checked={entryType === 'pto'}
                       disabled={selectedDate ? isWeekend(selectedDate) : false}
@@ -1374,6 +1364,20 @@ export default function TimeEntriesPage() {
                     />
                     PTO{ptoDaysLeft !== null && ` (${ptoDaysLeft} ${ptoDaysLeft === 1 ? 'day' : 'days'} left)`}
                     {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
+                  </label>
+                  <label className={styles.radioLabel}>
+                    <input
+                      type="radio"
+                      name="entryType"
+                      value="travel"
+                      checked={entryType === 'travel'}
+                      onChange={(e) => {
+                        setEntryType(e.target.value as EntryType);
+                        setStartTime('09:00');
+                        setEndTime('17:30');
+                      }}
+                    />
+                    Travel Day
                   </label>
                   <label className={styles.radioLabel}>
                     <input
@@ -1395,17 +1399,13 @@ export default function TimeEntriesPage() {
                     <input
                       type="radio"
                       name="entryType"
-                      value="holiday"
-                      checked={entryType === 'holiday'}
-                      disabled={selectedDate ? isWeekend(selectedDate) : false}
+                      value="none"
+                      checked={entryType === 'none'}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
                       }}
                     />
-                    Holiday
-                    {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
+                    Per Diem Only
                   </label>
                   <label className={styles.radioLabel}>
                     <input
