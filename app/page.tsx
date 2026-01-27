@@ -1,22 +1,60 @@
-import Link from 'next/link';
-import styles from './page.module.scss';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getAuthToken } from '@/lib/utils/auth';
+import { apiClient } from '@/lib/api/client';
 
 export default function Home() {
-  return (
-    <div className={styles.container}>
-      <main className={styles.main}>
-        <h1 className={styles.title}>Anchors Electric</h1>
-        <p className={styles.description}>Employee Management System</p>
-        
-        <div className={styles.actions}>
-          <Link href="/login" className={styles.button}>
-            Login
-          </Link>
-          <Link href="/register" className={styles.buttonSecondary}>
-            Register
-          </Link>
-        </div>
-      </main>
-    </div>
-  );
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      const token = getAuthToken();
+      
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      try {
+        const response = await apiClient.getProfile();
+        if (response.success && response.data) {
+          const user = (response.data as any).user;
+          const isAdmin = user?.role === 'ADMIN';
+          
+          if (isAdmin) {
+            router.push('/admin/profile');
+          } else {
+            router.push('/employee/profile');
+          }
+        } else {
+          router.push('/login');
+        }
+      } catch (error) {
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthAndRedirect();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontFamily: 'system-ui, sans-serif'
+      }}>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  return null;
 }
