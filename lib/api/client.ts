@@ -389,6 +389,67 @@ class ApiClient {
     return response.data;
   }
 
+  async uploadDocument(
+    file: File,
+    data: {
+      name: string;
+      type: 'CERTIFICATE' | 'PERSONAL_DOCUMENT';
+      expirationDate?: string | null;
+      doesNotExpire?: boolean;
+    }
+  ) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', data.name);
+    formData.append('type', data.type);
+    if (data.expirationDate) {
+      formData.append('expirationDate', data.expirationDate);
+    }
+    if (data.doesNotExpire !== undefined) {
+      formData.append('doesNotExpire', data.doesNotExpire.toString());
+    }
+
+    // Get auth token
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+    // Use axios directly to avoid default Content-Type header conflict
+    // Don't set Content-Type - let axios set it automatically with boundary for FormData
+    const response = await axios.post<ApiResponse>(
+      `${API_URL}/api/documents`,
+      formData,
+      {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  }
+
+  async getDocuments(type?: 'CERTIFICATE' | 'PERSONAL_DOCUMENT') {
+    const params = type ? `?type=${type}` : '';
+    const response = await this.client.get<ApiResponse>(`/documents${params}`);
+    return response.data;
+  }
+
+  async updateDocument(
+    id: string,
+    data: {
+      name?: string;
+      expirationDate?: string | null;
+      doesNotExpire?: boolean;
+    }
+  ) {
+    const response = await this.client.put<ApiResponse>(`/documents/${id}`, data);
+    return response.data;
+  }
+
+  async deleteDocument(id: string) {
+    const response = await this.client.delete<ApiResponse>(`/documents/${id}`);
+    return response.data;
+  }
+
 }
 
 export const apiClient = new ApiClient();

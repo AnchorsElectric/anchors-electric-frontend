@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
+import CertificatesSection from '@/components/documents/CertificatesSection';
+import DocumentsSection from '@/components/documents/DocumentsSection';
 import styles from './edit.module.scss';
 
 export default function EditProfilePage() {
@@ -841,6 +843,12 @@ export default function EditProfilePage() {
               </div>
             </>
           )}
+
+          {/* Certificates Section */}
+          <CertificatesSection />
+
+          {/* Personal Documents Section */}
+          <DocumentsSection />
 
           {isEditing && (
             <div className={styles.actions}>
