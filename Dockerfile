@@ -13,8 +13,9 @@ RUN npm ci
 COPY . .
 
 # Set environment variables for build
-ARG NEXT_PUBLIC_API_URL=https://anchors-electric-backend-production.up.railway.app
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# NEXT_PUBLIC_API_URL must be provided as build arg or environment variable
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Build the application
 RUN npm run build
