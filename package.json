@@ -2,6 +2,7 @@
   "name": "anchors-electric-frontend",
   "version": "0.1.0",
   "private": true,
+  "description": "Anchors Electric employee management frontend",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
