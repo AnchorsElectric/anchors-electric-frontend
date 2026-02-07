@@ -31,19 +31,19 @@ export const APP_ROUTES: RouteConfig[] = [
     category: 'admin',
   },
   
-  // Time Entries - accessible to regular users, admins, and project managers
+  // Time Entries - accessible to regular users, admins, accountants, and project managers
   {
     path: '/employee/time-entries',
     label: 'Time Entries',
-    allowedRoles: ['USER', 'ADMIN', 'PROJECT_MANAGER'],
+    allowedRoles: ['USER', 'ADMIN', 'ACCOUNTANT', 'PROJECT_MANAGER'],
     category: 'employee',
   },
   
-  // Pay Periods (Employee view) - accessible to regular users, admins, and project managers
+  // Pay Periods (Employee view) - accessible to regular users, admins, accountants, and project managers
   {
     path: '/employee/pay-periods',
     label: 'Pay Periods',
-    allowedRoles: ['USER', 'ADMIN', 'PROJECT_MANAGER'],
+    allowedRoles: ['USER', 'ADMIN', 'ACCOUNTANT', 'PROJECT_MANAGER'],
     category: 'employee',
   },
   
@@ -141,8 +141,8 @@ export function getNavigationItems(role: UserRole | null | undefined): RouteConf
   const seenLabels = new Set<string>();
   
   for (const route of accessibleRoutes) {
-    // PROJECT_MANAGER and ADMIN need both admin routes AND employee routes (time entries, pay periods)
-    if (role === 'PROJECT_MANAGER' || role === 'ADMIN') {
+    // PROJECT_MANAGER, ADMIN, and ACCOUNTANT need both admin routes AND employee routes (time entries, pay periods)
+    if (role === 'PROJECT_MANAGER' || role === 'ADMIN' || role === 'ACCOUNTANT') {
       // Include all routes for PROJECT_MANAGER and ADMIN (admin, shared, and employee)
       if (route.category === 'admin' || route.category === 'shared' || route.category === 'employee') {
         // For shared routes, prefer admin version

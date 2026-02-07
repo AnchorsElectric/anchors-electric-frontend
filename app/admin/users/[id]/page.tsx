@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
+import { canAccessRoute, UserRole } from '@/lib/config/routes';
 import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
 import styles from './user-detail.module.scss';
 
@@ -51,6 +52,7 @@ export default function UserDetailPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [employeeProfile, setEmployeeProfile] = useState<{ 
@@ -149,17 +151,24 @@ export default function UserDetailPage() {
     }
   }, [router, userId]);
 
+  // Non-admins must not be in edit mode (view-only)
+  useEffect(() => {
+    if (!isAdmin) setIsEditing(false);
+  }, [isAdmin]);
+
   const checkAdminStatus = async () => {
     try {
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
         const profileData = response.data as any;
         const isUserAdmin = profileData.isAdmin || false;
+        const role = (profileData.user?.role || null) as UserRole | null;
         
         setIsAdmin(isUserAdmin);
-        // The response structure is { user: {...}, isAdmin: ... }
+        setUserRole(role);
         setCurrentUserId(profileData.user?.id || null);
-        if (!isUserAdmin) {
+        // Allow access if user can access the users list (e.g. ADMIN, ACCOUNTANT, HR, PROJECT_MANAGER)
+        if (!role || !canAccessRoute('/admin/users', role)) {
           router.push('/employee/profile');
         }
       }
@@ -881,8 +890,8 @@ export default function UserDetailPage() {
     }
   };
 
-  if (!isAdmin) {
-    return null; // Will redirect
+  if (!userRole || !canAccessRoute('/admin/users', userRole)) {
+    return null; // Will redirect or no access
   }
 
   if (loading) {
@@ -917,7 +926,7 @@ export default function UserDetailPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>User Details</h1>
         <div className={styles.headerActions}>
-          {!isEditing && (
+          {!isEditing && isAdmin && (
             <>
               {user && employeeProfile && (
                 <button onClick={async () => {
@@ -1131,40 +1140,48 @@ export default function UserDetailPage() {
                 {new Date(user.dateOfBirth).toLocaleDateString()}
               </div>
             </div>
-            <div className={styles.field}>
-              <label>SSN{isEditing && ' *'}</label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  name="ssn"
-                  value={formData.ssn}
-                  onChange={handleChange}
-                  required
-                  className={styles.input}
-                  placeholder="XXX-XX-XXXX"
-                  pattern="[0-9]{3}-[0-9]{2}-[0-9]{4}"
-                  maxLength={11}
-                />
-              ) : (
-                <div className={styles.value}>{user.ssn}</div>
-              )}
-            </div>
+            {isAdmin && (
+              <div className={styles.field}>
+                <label>SSN{isEditing && ' *'}</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="ssn"
+                    value={formData.ssn}
+                    onChange={handleChange}
+                    required
+                    className={styles.input}
+                    placeholder="XXX-XX-XXXX"
+                    pattern="[0-9]{3}-[0-9]{2}-[0-9]{4}"
+                    maxLength={11}
+                  />
+                ) : (
+                  <div className={styles.value}>{user.ssn}</div>
+                )}
+              </div>
+            )}
             <div className={styles.field}>
               <label>Role</label>
               <div className={styles.value}>
-                <select
-                  value={user.role}
-                  onChange={(e) => handleRoleUpdate(e.target.value as 'USER' | 'ADMIN' | 'ACCOUNTANT' | 'HR' | 'PROJECT_MANAGER')}
-                  disabled={updatingRole}
-                  className={styles.roleSelect}
-                >
-                  <option value="USER">User</option>
-                  <option value="ADMIN">Admin</option>
-                  <option value="ACCOUNTANT">Accountant</option>
-                  <option value="HR">HR</option>
-                  <option value="PROJECT_MANAGER">Project Manager</option>
-                </select>
-                {updatingRole && <span className={styles.saving}>Updating...</span>}
+                {isAdmin ? (
+                  <>
+                    <select
+                      value={user.role}
+                      onChange={(e) => handleRoleUpdate(e.target.value as 'USER' | 'ADMIN' | 'ACCOUNTANT' | 'HR' | 'PROJECT_MANAGER')}
+                      disabled={updatingRole}
+                      className={styles.roleSelect}
+                    >
+                      <option value="USER">User</option>
+                      <option value="ADMIN">Admin</option>
+                      <option value="ACCOUNTANT">Accountant</option>
+                      <option value="HR">HR</option>
+                      <option value="PROJECT_MANAGER">Project Manager</option>
+                    </select>
+                    {updatingRole && <span className={styles.saving}>Updating...</span>}
+                  </>
+                ) : (
+                  <span>{user.role}</span>
+                )}
               </div>
             </div>
             <div className={styles.field}>
@@ -1474,7 +1491,7 @@ export default function UserDetailPage() {
           <h2 className={styles.sectionTitle}>Employee Profile</h2>
           {!employeeProfile && !isEditing && (
             <p style={{ marginBottom: '1rem', color: '#666', fontStyle: 'italic' }}>
-              No employee profile exists for this user. Click "Edit User" to create one.
+              No employee profile exists for this user.{isAdmin && ' Click "Edit User" to create one.'}
             </p>
           )}
           <div className={styles.grid}>
@@ -1729,7 +1746,7 @@ export default function UserDetailPage() {
           </div>
         </div>
 
-        {isEditing && (
+        {isEditing && isAdmin && (
           <div className={styles.formActions}>
             <button
               type="button"

@@ -165,6 +165,8 @@
   min-height: 1.5rem;
   display: flex;
   align-items: center;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .field select {

@@ -58,6 +58,7 @@ export default function EditProfilePage() {
   const [sickDaysLeft, setSickDaysLeft] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [originalFormData, setOriginalFormData] = useState(formData);
+  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
     const token = getAuthToken();
@@ -90,6 +91,7 @@ export default function EditProfilePage() {
       const response = await apiClient.getProfile();
       if (response.success && response.data?.user) {
         const user = response.data.user;
+        setUserRole(user.role || '');
         const loadedData = {
           firstName: user.firstName || '',
           middleName: user.middleName || '',
@@ -440,6 +442,11 @@ export default function EditProfilePage() {
               <div className={styles.field}>
                 <label htmlFor="lastName">Last Name</label>
                 <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
+              </div>
+
+              <div className={styles.field}>
+                <label>Role</label>
+                <div className={styles.fieldValue}>{userRole || 'N/A'}</div>
               </div>
             </div>
           </div>

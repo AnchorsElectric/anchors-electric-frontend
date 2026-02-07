@@ -347,7 +347,6 @@ export default function AdminProfilePage() {
         firstName: formData.firstName,
         middleName: formData.middleName || null,
         lastName: formData.lastName,
-        email: formData.email,
         phone: getPhoneDigits(formData.phone),
         address1: formData.address1,
         address2: formData.address2 || null,
@@ -357,6 +356,9 @@ export default function AdminProfilePage() {
         dateOfBirth: formData.dateOfBirth,
         ssn: formData.ssn,
       };
+      if (userRole === 'ADMIN') {
+        payload.email = formData.email;
+      }
 
       payload.emergencyContact = {
         firstName: formData.emergencyContact.firstName.trim(),
@@ -499,6 +501,11 @@ export default function AdminProfilePage() {
               </div>
 
               <div className={styles.field}>
+                <label>Role</label>
+                <div className={styles.fieldValue}>{userRole || 'N/A'}</div>
+              </div>
+
+              <div className={styles.field}>
                 <label htmlFor="dateOfBirth">Date of Birth{isEditing && ' *'}</label>
                 {isEditing ? (
                   <input
@@ -544,8 +551,8 @@ export default function AdminProfilePage() {
             <h2 className={styles.sectionTitle}>Contact Information</h2>
             <div className={styles.fields}>
               <div className={`${styles.field} ${styles.fieldFullWidth}`}>
-                <label htmlFor="email">Email{isEditing && ' *'}</label>
-                {isEditing ? (
+                <label htmlFor="email">Email{isEditing && userRole === 'ADMIN' && ' *'}</label>
+                {isEditing && userRole === 'ADMIN' ? (
                   <input
                     id="email"
                     name="email"
@@ -934,8 +941,8 @@ export default function AdminProfilePage() {
             <h2 className={styles.sectionTitle}>Account Information</h2>
             <div className={styles.fields}>
               <div className={styles.field}>
-                <label htmlFor="role">Role{isEditing && ' *'}</label>
-                {isEditing ? (
+                <label htmlFor="role">Role{isEditing && userRole === 'ADMIN' && ' *'}</label>
+                {isEditing && userRole === 'ADMIN' ? (
                   <select
                     id="role"
                     name="role"
