@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
+import { canAccessRoute, getDefaultRoute, UserRole } from '@/lib/config/routes';
 import styles from './users.module.scss';
 
 interface User {
@@ -33,7 +34,8 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -42,22 +44,38 @@ export default function AdminUsersPage() {
       return;
     }
 
-    checkAdminStatus();
-    loadUsers();
+    checkAccess();
   }, [router]);
 
-  const checkAdminStatus = async () => {
+  const checkAccess = async () => {
     try {
+      setCheckingAccess(true);
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
-        const isUserAdmin = (response.data as any).isAdmin || false;
-        setIsAdmin(isUserAdmin);
-        if (!isUserAdmin) {
-          router.push('/employee/profile');
+        const data = response.data as any;
+        const role = (data.user?.role || null) as UserRole | null;
+        setUserRole(role);
+
+        if (!role) {
+          router.push('/login');
+          return;
         }
+
+        // Check if user can access the users route
+        if (!canAccessRoute('/admin/users', role)) {
+          router.push('/unauthorized');
+          return;
+        }
+
+        // Load users if access is granted
+        loadUsers();
+      } else {
+        router.push('/login');
       }
     } catch (err) {
-      router.push('/dashboard');
+      router.push('/login');
+    } finally {
+      setCheckingAccess(false);
     }
   };
 
@@ -104,7 +122,15 @@ export default function AdminUsersPage() {
   }, [searchTerm]);
 
 
-  if (!isAdmin) {
+  if (checkingAccess) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loading}>Checking access...</div>
+      </div>
+    );
+  }
+
+  if (!userRole || !canAccessRoute('/admin/users', userRole)) {
     return null; // Will redirect
   }
 

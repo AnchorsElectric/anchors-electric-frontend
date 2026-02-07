@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api/client';
-import styles from './documents.module.scss';
+import docStyles from './documents.module.scss';
+import profileStyles from '@/app/employee/profile/edit.module.scss';
 
 interface Certificate {
   id: string;
@@ -80,23 +81,12 @@ export default function CertificatesSection() {
     setUploading(true);
 
     try {
-      console.log('Starting upload...', {
-        fileName: formData.file.name,
-        fileSize: formData.file.size,
-        name: formData.name,
-        type: 'CERTIFICATE',
-        expirationDate: formData.doesNotExpire ? null : formData.expirationDate,
-        doesNotExpire: formData.doesNotExpire,
-      });
-
       const response = await apiClient.uploadDocument(formData.file, {
         name: formData.name.trim(),
         type: 'CERTIFICATE',
         expirationDate: formData.doesNotExpire ? null : formData.expirationDate,
         doesNotExpire: formData.doesNotExpire,
       });
-
-      console.log('Upload response:', response);
 
       if (response.success) {
         setSuccess('Certificate uploaded successfully!');
@@ -119,13 +109,6 @@ export default function CertificatesSection() {
         setError(response.error || 'Failed to upload certificate');
       }
     } catch (err: any) {
-      console.error('Upload error:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        headers: err.response?.headers,
-      });
       const errorMessage = err.response?.data?.error || err.message || 'Failed to upload certificate';
       setError(errorMessage);
       // Keep error visible for 5 seconds
@@ -185,28 +168,19 @@ export default function CertificatesSection() {
   };
 
   return (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>Certificates</h2>
-        <button
-          type="button"
-          onClick={() => setShowUploadForm(!showUploadForm)}
-          className={styles.addButton}
-        >
-          {showUploadForm ? 'Cancel' : '+ Add Certificate'}
-        </button>
-      </div>
+    <div className={profileStyles.section}>
+      <h2 className={profileStyles.sectionTitle}>Certificates</h2>
 
-      {error && <div className={styles.error}>{error}</div>}
-      {success && <div className={styles.success}>{success}</div>}
+      {error && <div className={profileStyles.error}>{error}</div>}
+      {success && <div className={profileStyles.success}>{success}</div>}
 
       {showUploadForm && (
         <form 
           onSubmit={handleSubmit}
-          className={styles.uploadForm}
+          className={docStyles.uploadForm}
           noValidate
         >
-          <div className={styles.field}>
+          <div className={docStyles.field}>
             <label htmlFor="certName">Certificate Name *</label>
             <input
               id="certName"
@@ -219,7 +193,7 @@ export default function CertificatesSection() {
             />
           </div>
 
-          <div className={styles.field}>
+          <div className={docStyles.field}>
             <label htmlFor="certFile">Certificate File *</label>
             <input
               id="certFile"
@@ -231,12 +205,12 @@ export default function CertificatesSection() {
               key={showUploadForm ? 'file-input' : 'file-input-reset'}
             />
             {formData.file && (
-              <p className={styles.fileName}>Selected: {formData.file.name}</p>
+              <p className={docStyles.fileName}>Selected: {formData.file.name}</p>
             )}
           </div>
 
-          <div className={styles.field}>
-            <label className={styles.checkboxLabel}>
+          <div className={docStyles.field}>
+            <label className={docStyles.checkboxLabel}>
               <input
                 type="checkbox"
                 checked={formData.doesNotExpire}
@@ -248,7 +222,7 @@ export default function CertificatesSection() {
           </div>
 
           {!formData.doesNotExpire && (
-            <div className={styles.field}>
+            <div className={docStyles.field}>
               <label htmlFor="certExpiration">Expiration Date *</label>
               <input
                 id="certExpiration"
@@ -261,7 +235,7 @@ export default function CertificatesSection() {
             </div>
           )}
 
-          <div className={styles.formActions}>
+          <div className={docStyles.formActions}>
             <button
               type="button"
               onClick={() => {
@@ -274,14 +248,14 @@ export default function CertificatesSection() {
                 });
                 setError('');
               }}
-              className={styles.cancelButton}
+              className={docStyles.cancelButton}
               disabled={uploading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={styles.submitButton}
+              className={docStyles.submitButton}
               disabled={uploading}
             >
               {uploading ? 'Uploading...' : 'Upload Certificate'}
@@ -293,22 +267,22 @@ export default function CertificatesSection() {
       {loading ? (
         <p>Loading certificates...</p>
       ) : certificates.length === 0 ? (
-        <p className={styles.emptyMessage}>No certificates uploaded yet.</p>
+        <p className={docStyles.emptyMessage}>No certificates uploaded yet.</p>
       ) : (
-        <div className={styles.documentList}>
+        <div className={docStyles.documentList}>
           {certificates.map((cert) => (
-            <div key={cert.id} className={styles.documentItem}>
-              <div className={styles.documentInfo}>
-                <h3 className={styles.documentName}>{cert.name}</h3>
-                <p className={styles.documentFileName}>{cert.fileName}</p>
-                <div className={styles.documentMeta}>
+            <div key={cert.id} className={docStyles.documentItem}>
+              <div className={docStyles.documentInfo}>
+                <h3 className={docStyles.documentName}>{cert.name}</h3>
+                <p className={docStyles.documentFileName}>{cert.fileName}</p>
+                <div className={docStyles.documentMeta}>
                   {cert.doesNotExpire ? (
-                    <span className={styles.noExpiration}>No expiration</span>
+                    <span className={docStyles.noExpiration}>No expiration</span>
                   ) : (
                     <span
-                      className={`${styles.expirationDate} ${
-                        isExpired(cert.expirationDate) ? styles.expired : ''
-                      } ${isExpiringSoon(cert.expirationDate) ? styles.expiringSoon : ''}`}
+                      className={`${docStyles.expirationDate} ${
+                        isExpired(cert.expirationDate) ? docStyles.expired : ''
+                      } ${isExpiringSoon(cert.expirationDate) ? docStyles.expiringSoon : ''}`}
                     >
                       Expires: {formatDate(cert.expirationDate)}
                       {isExpired(cert.expirationDate) && ' (Expired)'}
@@ -317,13 +291,13 @@ export default function CertificatesSection() {
                   )}
                 </div>
               </div>
-              <div className={styles.documentActions}>
+              <div className={docStyles.documentActions}>
                 {cert.fileUrl && (
                   <a
                     href={cert.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={styles.viewButton}
+                    className={docStyles.viewButton}
                   >
                     View
                   </a>
@@ -331,7 +305,7 @@ export default function CertificatesSection() {
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(cert.id, cert.name)}
-                  className={styles.deleteButton}
+                  className={docStyles.deleteButton}
                 >
                   Delete
                 </button>
@@ -341,31 +315,41 @@ export default function CertificatesSection() {
         </div>
       )}
 
+      <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={() => setShowUploadForm(!showUploadForm)}
+          className={docStyles.addButton}
+        >
+          {showUploadForm ? 'Cancel' : '+ Add Certificate'}
+        </button>
+      </div>
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && certificateToDelete && (
-        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Delete Certificate</h2>
+        <div className={docStyles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className={docStyles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={docStyles.modalHeader}>
+              <h2 className={docStyles.modalTitle}>Delete Certificate</h2>
               <button
-                className={styles.modalClose}
+                className={docStyles.modalClose}
                 onClick={() => !deleting && setShowDeleteModal(false)}
                 disabled={deleting}
               >
                 ×
               </button>
             </div>
-            <div className={styles.modalBody}>
+            <div className={docStyles.modalBody}>
               <p>
                 Are you sure you want to delete <strong>{certificateToDelete.name}</strong>?
               </p>
-              <p className={styles.warning}>
+              <p className={docStyles.warning}>
                 This action cannot be undone. The certificate will be permanently deleted from the system.
               </p>
             </div>
-            <div className={styles.modalFooter}>
+            <div className={docStyles.modalFooter}>
               <button
-                className={styles.cancelButton}
+                className={docStyles.cancelButton}
                 onClick={() => {
                   setShowDeleteModal(false);
                   setCertificateToDelete(null);
@@ -375,7 +359,7 @@ export default function CertificatesSection() {
                 Cancel
               </button>
               <button
-                className={styles.deleteButton}
+                className={docStyles.deleteButton}
                 onClick={handleDelete}
                 disabled={deleting}
               >

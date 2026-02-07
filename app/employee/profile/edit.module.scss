@@ -91,6 +91,13 @@
   margin-bottom: 2.5rem;
 }
 
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
 .sectionTitle {
   font-size: 1.5rem;
   font-weight: 600;
@@ -98,12 +105,21 @@
   color: #000000;
   border-bottom: 2px solid #e0e0e0;
   padding-bottom: 0.5rem;
+  
+  .sectionHeader & {
+    margin-bottom: 0;
+    flex: 1;
+  }
 }
 
 .fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
+}
+
+.fieldFullWidth {
+  grid-column: 1 / -1;
 }
 
 .field {

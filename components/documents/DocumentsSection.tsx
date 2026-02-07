@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api/client';
-import styles from './documents.module.scss';
+import docStyles from './documents.module.scss';
+import profileStyles from '@/app/employee/profile/edit.module.scss';
 
 interface Document {
   id: string;
@@ -71,20 +72,11 @@ export default function DocumentsSection() {
     setUploading(true);
 
     try {
-      console.log('Starting upload...', {
-        fileName: formData.file.name,
-        fileSize: formData.file.size,
-        name: formData.name,
-        type: 'PERSONAL_DOCUMENT',
-      });
-
       const response = await apiClient.uploadDocument(formData.file, {
         name: formData.name.trim(),
         type: 'PERSONAL_DOCUMENT',
         doesNotExpire: true,
       });
-
-      console.log('Upload response:', response);
 
       if (response.success) {
         setSuccess('Document uploaded successfully!');
@@ -105,13 +97,6 @@ export default function DocumentsSection() {
         setError(response.error || 'Failed to upload document');
       }
     } catch (err: any) {
-      console.error('Upload error:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        headers: err.response?.headers,
-      });
       const errorMessage = err.response?.data?.error || err.message || 'Failed to upload document';
       setError(errorMessage);
       // Keep error visible for 5 seconds
@@ -153,24 +138,15 @@ export default function DocumentsSection() {
   };
 
   return (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>Personal Documents</h2>
-        <button
-          type="button"
-          onClick={() => setShowUploadForm(!showUploadForm)}
-          className={styles.addButton}
-        >
-          {showUploadForm ? 'Cancel' : '+ Add Document'}
-        </button>
-      </div>
+    <div className={profileStyles.section}>
+      <h2 className={profileStyles.sectionTitle}>Personal Documents</h2>
 
-      {error && <div className={styles.error}>{error}</div>}
-      {success && <div className={styles.success}>{success}</div>}
+      {error && <div className={profileStyles.error}>{error}</div>}
+      {success && <div className={profileStyles.success}>{success}</div>}
 
       {showUploadForm && (
-        <form onSubmit={handleSubmit} className={styles.uploadForm} noValidate>
-          <div className={styles.field}>
+        <form onSubmit={handleSubmit} className={docStyles.uploadForm} noValidate>
+          <div className={docStyles.field}>
             <label htmlFor="docName">Document Name *</label>
             <input
               id="docName"
@@ -183,7 +159,7 @@ export default function DocumentsSection() {
             />
           </div>
 
-          <div className={styles.field}>
+          <div className={docStyles.field}>
             <label htmlFor="docFile">Document File *</label>
             <input
               id="docFile"
@@ -195,11 +171,11 @@ export default function DocumentsSection() {
               key={showUploadForm ? 'file-input' : 'file-input-reset'}
             />
             {formData.file && (
-              <p className={styles.fileName}>Selected: {formData.file.name}</p>
+              <p className={docStyles.fileName}>Selected: {formData.file.name}</p>
             )}
           </div>
 
-          <div className={styles.formActions}>
+          <div className={docStyles.formActions}>
             <button
               type="button"
               onClick={() => {
@@ -210,14 +186,14 @@ export default function DocumentsSection() {
                 });
                 setError('');
               }}
-              className={styles.cancelButton}
+              className={docStyles.cancelButton}
               disabled={uploading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={styles.submitButton}
+              className={docStyles.submitButton}
               disabled={uploading}
             >
               {uploading ? 'Uploading...' : 'Upload Document'}
@@ -229,25 +205,25 @@ export default function DocumentsSection() {
       {loading ? (
         <p>Loading documents...</p>
       ) : documents.length === 0 ? (
-        <p className={styles.emptyMessage}>No documents uploaded yet.</p>
+        <p className={docStyles.emptyMessage}>No documents uploaded yet.</p>
       ) : (
-        <div className={styles.documentList}>
+        <div className={docStyles.documentList}>
           {documents.map((doc) => (
-            <div key={doc.id} className={styles.documentItem}>
-              <div className={styles.documentInfo}>
-                <h3 className={styles.documentName}>{doc.name}</h3>
-                <p className={styles.documentFileName}>{doc.fileName}</p>
-                <p className={styles.documentMeta}>
+            <div key={doc.id} className={docStyles.documentItem}>
+              <div className={docStyles.documentInfo}>
+                <h3 className={docStyles.documentName}>{doc.name}</h3>
+                <p className={docStyles.documentFileName}>{doc.fileName}</p>
+                <p className={docStyles.documentMeta}>
                   Uploaded: {new Date(doc.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <div className={styles.documentActions}>
+              <div className={docStyles.documentActions}>
                 {doc.fileUrl && (
                   <a
                     href={doc.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={styles.viewButton}
+                    className={docStyles.viewButton}
                   >
                     View
                   </a>
@@ -255,7 +231,7 @@ export default function DocumentsSection() {
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(doc.id, doc.name)}
-                  className={styles.deleteButton}
+                  className={docStyles.deleteButton}
                 >
                   Delete
                 </button>
@@ -265,31 +241,41 @@ export default function DocumentsSection() {
         </div>
       )}
 
+      <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={() => setShowUploadForm(!showUploadForm)}
+          className={docStyles.addButton}
+        >
+          {showUploadForm ? 'Cancel' : '+ Add Document'}
+        </button>
+      </div>
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && documentToDelete && (
-        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Delete Document</h2>
+        <div className={docStyles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className={docStyles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={docStyles.modalHeader}>
+              <h2 className={docStyles.modalTitle}>Delete Document</h2>
               <button
-                className={styles.modalClose}
+                className={docStyles.modalClose}
                 onClick={() => !deleting && setShowDeleteModal(false)}
                 disabled={deleting}
               >
                 ×
               </button>
             </div>
-            <div className={styles.modalBody}>
+            <div className={docStyles.modalBody}>
               <p>
                 Are you sure you want to delete <strong>{documentToDelete.name}</strong>?
               </p>
-              <p className={styles.warning}>
+              <p className={docStyles.warning}>
                 This action cannot be undone. The document will be permanently deleted from the system.
               </p>
             </div>
-            <div className={styles.modalFooter}>
+            <div className={docStyles.modalFooter}>
               <button
-                className={styles.cancelButton}
+                className={docStyles.cancelButton}
                 onClick={() => {
                   setShowDeleteModal(false);
                   setDocumentToDelete(null);
@@ -299,7 +285,7 @@ export default function DocumentsSection() {
                 Cancel
               </button>
               <button
-                className={styles.deleteButton}
+                className={docStyles.deleteButton}
                 onClick={handleDelete}
                 disabled={deleting}
               >

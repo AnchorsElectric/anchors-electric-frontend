@@ -28,13 +28,15 @@ function DashboardContent() {
       setLoading(true);
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
-        const isUserAdmin = (response.data as any).isAdmin || false;
-        setIsAdmin(isUserAdmin);
+        const { getDefaultRoute, UserRole } = await import('@/lib/config/routes');
+        const data = response.data as any;
+        const role = (data.user?.role || null) as UserRole | null;
+        setIsAdmin(role === 'ADMIN');
         
-        if (isUserAdmin) {
-          router.push('/admin/profile');
+        if (role) {
+          router.push(getDefaultRoute(role));
         } else {
-          router.push('/employee/profile');
+          router.push('/login');
         }
       }
     } catch (err) {

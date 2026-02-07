@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getAuthToken, setAuthToken } from '@/lib/utils/auth';
 import { apiClient } from '@/lib/api/client';
+import { getDefaultRoute, UserRole } from '@/lib/config/routes';
 import styles from './page.module.scss';
 
 function LoginContent() {
@@ -32,12 +33,11 @@ function LoginContent() {
         const response = await apiClient.getProfile();
         if (response.success && response.data) {
           const user = (response.data as any).user;
-          const isAdmin = user?.role === 'ADMIN';
+          const role = (user?.role || null) as UserRole | null;
           
-          if (isAdmin) {
-            router.push('/admin/profile');
-          } else {
-            router.push('/employee/profile');
+          if (role) {
+            const defaultRoute = getDefaultRoute(role);
+            router.push(defaultRoute);
           }
           return;
         }
@@ -66,10 +66,12 @@ function LoginContent() {
         const { token, user } = response.data as { token: string; user: any };
         setAuthToken(token);
         
-        if (user?.role === 'ADMIN') {
-          router.push('/admin/profile');
+        const role = (user?.role || null) as UserRole | null;
+        
+        if (role) {
+          router.push(getDefaultRoute(role));
         } else {
-          router.push('/employee/profile');
+          router.push('/login');
         }
       } else {
         setError(response.error || 'Login failed. Please check your credentials and try again.');

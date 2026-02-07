@@ -17,7 +17,6 @@ function getApiUrl(): string {
   try {
     new URL(url);
   } catch (e) {
-    console.error('Invalid API_URL format, using fallback:', url);
     url = 'http://localhost:3001';
   }
   
@@ -25,10 +24,6 @@ function getApiUrl(): string {
 }
 
 const API_URL = getApiUrl();
-
-if (!process.env.NEXT_PUBLIC_API_URL) {
-  console.warn('NEXT_PUBLIC_API_URL environment variable is not set. Using fallback:', API_URL);
-}
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -46,7 +41,6 @@ class ApiClient {
     
     // Validate the baseURL before creating the client
     if (!API_URL || !baseURL || baseURL.includes('undefined') || baseURL.includes('null')) {
-      console.error('Invalid API_URL detected:', API_URL, 'baseURL:', baseURL);
       throw new Error(`Invalid API URL configuration: ${API_URL}`);
     }
     

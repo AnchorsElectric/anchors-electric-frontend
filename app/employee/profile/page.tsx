@@ -19,6 +19,7 @@ export default function EditProfilePage() {
     firstName: '',
     middleName: '',
     lastName: '',
+    email: '',
     phone: '',
     address1: '',
     address2: '',
@@ -75,9 +76,11 @@ export default function EditProfilePage() {
       if (response.success && response.data) {
         const projectsData = (response.data as any).projects || [];
         setProjects(projectsData);
+      } else {
+        setError('Failed to load projects list');
       }
     } catch (err: any) {
-      // Silently fail - projects are optional
+      setError(err.response?.data?.error || 'Failed to load projects list');
     }
   };
 
@@ -91,6 +94,7 @@ export default function EditProfilePage() {
           firstName: user.firstName || '',
           middleName: user.middleName || '',
           lastName: user.lastName || '',
+          email: user.email || '',
           phone: formatPhoneNumber(user.phone || ''),
           address1: user.address1 || '',
           address2: user.address2 || '',
@@ -213,21 +217,23 @@ export default function EditProfilePage() {
 
   const handleProjectChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newProjectId = e.target.value;
-    if (!newProjectId) {
-      setError('Please select a project');
-      return;
-    }
     setUpdatingProject(true);
     setError('');
     setSuccess('');
 
     try {
-      const response = await apiClient.updateCurrentProject(newProjectId);
+      // Allow empty string to unassign from project
+      const projectIdToUpdate = newProjectId || null;
+      const response = await apiClient.updateCurrentProject(projectIdToUpdate);
       if (response.success) {
-        setCurrentProjectId(newProjectId);
-        const selectedProject = projects.find(p => p.id === newProjectId);
-        setCurrentProjectName(selectedProject ? `${selectedProject.name} - ${selectedProject.jobNumber}` : '');
-        setSuccess('Current project updated successfully!');
+        setCurrentProjectId(newProjectId || '');
+        if (newProjectId) {
+          const selectedProject = projects.find(p => p.id === newProjectId);
+          setCurrentProjectName(selectedProject ? `${selectedProject.name} - ${selectedProject.jobNumber}` : '');
+        } else {
+          setCurrentProjectName('');
+        }
+        setSuccess(newProjectId ? 'Current project updated successfully!' : 'Project assignment removed successfully!');
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(response.error || 'Failed to update current project');
@@ -323,9 +329,6 @@ export default function EditProfilePage() {
 
     try {
       const payload: any = {
-        firstName: formData.firstName,
-        middleName: formData.middleName || null,
-        lastName: formData.lastName,
         phone: getPhoneDigits(formData.phone),
         address1: formData.address1,
         address2: formData.address2 || null,
@@ -366,11 +369,6 @@ export default function EditProfilePage() {
   };
 
   const handleEditClick = () => {
-    // If no project is assigned and projects are available, auto-select the first one
-    if (!currentProjectId && projects.length > 0) {
-      setCurrentProjectId(projects[0].id);
-      setCurrentProjectName(`${projects[0].name} - ${projects[0].jobNumber}`);
-    }
     setIsEditing(true);
     setError('');
     setSuccess('');
@@ -430,53 +428,18 @@ export default function EditProfilePage() {
             <h2 className={styles.sectionTitle}>Personal Information</h2>
             <div className={styles.fields}>
               <div className={styles.field}>
-                <label htmlFor="firstName">First Name{isEditing && ' *'}</label>
-                {isEditing ? (
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                  />
-                ) : (
-                  <div className={styles.fieldValue}>{formData.firstName || 'N/A'}</div>
-                )}
+                <label htmlFor="firstName">First Name</label>
+                <div className={styles.fieldValue}>{formData.firstName || 'N/A'}</div>
               </div>
 
               <div className={styles.field}>
                 <label htmlFor="middleName">Middle Name</label>
-                {isEditing ? (
-                  <input
-                    id="middleName"
-                    name="middleName"
-                    type="text"
-                    value={formData.middleName}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                ) : (
-                  <div className={styles.fieldValue}>{formData.middleName || 'N/A'}</div>
-                )}
+                <div className={styles.fieldValue}>{formData.middleName || 'N/A'}</div>
               </div>
 
               <div className={styles.field}>
-                <label htmlFor="lastName">Last Name{isEditing && ' *'}</label>
-                {isEditing ? (
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                  />
-                ) : (
-                  <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
-                )}
+                <label htmlFor="lastName">Last Name</label>
+                <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
               </div>
             </div>
           </div>
@@ -485,6 +448,11 @@ export default function EditProfilePage() {
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Contact Information</h2>
             <div className={styles.fields}>
+              <div className={`${styles.field} ${styles.fieldFullWidth}`}>
+                <label htmlFor="email">Email</label>
+                <div className={styles.fieldValue}>{formData.email || 'N/A'}</div>
+              </div>
+
               <div className={styles.field}>
                 <label htmlFor="phone">Phone{isEditing && ' *'}</label>
                 {isEditing ? (
@@ -792,68 +760,68 @@ export default function EditProfilePage() {
             </div>
           </div>
 
-          {/* Employee Information Section - Only show if user has employee profile */}
-          {hasEmployeeProfile && (
-            <div className={styles.section}>
-              <h2 className={styles.sectionTitle}>Employee Information</h2>
-              <div className={styles.fields}>
-                {employeeTitle && (
-                  <div className={styles.field}>
-                    <label>Title</label>
-                    <div className={styles.fieldValue}>{employeeTitle}</div>
-                  </div>
-                )}
-                <div className={styles.field}>
-                  <label htmlFor="currentProject">Current Project{isEditing && ' *'}</label>
-                  {isEditing ? (
-                    <>
-                      <select
-                        id="currentProject"
-                        value={currentProjectId}
-                        onChange={handleProjectChange}
-                        disabled={updatingProject || loading}
-                        className={styles.select}
-                        required
-                      >
-                        {projects.length === 0 ? (
-                          <option value="">No projects available</option>
-                        ) : (
-                          projects.map((project) => (
-                            <option key={project.id} value={project.id}>
-                              {project.name} - {project.jobNumber}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                      {updatingProject && <p className={styles.helpText}>Updating...</p>}
-                    </>
-                  ) : (
-                    <div className={styles.fieldValue}>
-                      {currentProjectName || 'No Project Assigned'}
-                    </div>
-                  )}
-                </div>
-                {ptoCredit !== null && (
-                  <div className={styles.field}>
-                    <label>PTO Credit</label>
-                    <div className={styles.fieldValue}>{ptoCredit.toFixed(2)} hours</div>
-                  </div>
-                )}
-                {weeklyPtoRate !== null && (
-                  <div className={styles.field}>
-                    <label>Weekly PTO Rate</label>
-                    <div className={styles.fieldValue}>{weeklyPtoRate.toFixed(2)} hours/week</div>
-                  </div>
-                )}
-                {sickDaysLeft !== null && (
-                  <div className={styles.field}>
-                    <label>Sick Days Left</label>
-                    <div className={styles.fieldValue}>{sickDaysLeft}</div>
+          {/* Employee Information Section - Always visible for all users */}
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Employee Information</h2>
+            <div className={styles.fields}>
+              <div className={styles.field}>
+                <label>Title</label>
+                <div className={styles.fieldValue}>{employeeTitle || 'N/A'}</div>
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="currentProject">Current Project</label>
+                {hasEmployeeProfile ? (
+                  <>
+                    <select
+                      id="currentProject"
+                      value={currentProjectId || ''}
+                      onChange={handleProjectChange}
+                      disabled={updatingProject || loading}
+                      className={styles.select}
+                    >
+                      <option value="">No Project Assigned</option>
+                      {projects.length === 0 ? (
+                        <option value="" disabled>No projects available</option>
+                      ) : (
+                        projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name} - {project.jobNumber}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {updatingProject && <p className={styles.helpText}>Updating...</p>}
+                    {!currentProjectId && projects.length > 0 && (
+                      <p className={styles.helpText}>Select a project to assign yourself to it</p>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.fieldValue}>
+                    {currentProjectName || 'No Project Assigned'}
+                    <p className={styles.helpText}>Employee profile required to assign projects</p>
                   </div>
                 )}
               </div>
+              <div className={styles.field}>
+                <label>PTO Credit</label>
+                <div className={styles.fieldValue}>
+                  {ptoCredit !== null ? `${ptoCredit.toFixed(2)} hours` : 'N/A'}
+                </div>
+              </div>
+              <div className={styles.field}>
+                <label>Weekly PTO Rate</label>
+                <div className={styles.fieldValue}>
+                  {weeklyPtoRate !== null ? `${weeklyPtoRate.toFixed(2)} hours/week` : 'N/A'}
+                </div>
+              </div>
+              <div className={styles.field}>
+                <label>Sick Days Left</label>
+                <div className={styles.fieldValue}>
+                  {sickDaysLeft !== null ? sickDaysLeft : 'N/A'}
+                </div>
+              </div>
             </div>
-          )}
+          </div>
 
           {isEditing && (
             <div className={styles.actions}>

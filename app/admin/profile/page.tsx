@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
+import CertificatesSection from '@/components/documents/CertificatesSection';
+import DocumentsSection from '@/components/documents/DocumentsSection';
 import styles from './edit.module.scss';
 
 export default function AdminProfilePage() {
@@ -17,12 +19,15 @@ export default function AdminProfilePage() {
     firstName: '',
     middleName: '',
     lastName: '',
+    email: '',
     phone: '',
     address1: '',
     address2: '',
     city: '',
     state: '',
     zipCode: '',
+    dateOfBirth: '',
+    ssn: '',
     emergencyContact: {
       firstName: '',
       lastName: '',
@@ -48,8 +53,20 @@ export default function AdminProfilePage() {
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
   const [currentProjectName, setCurrentProjectName] = useState<string>('');
   const [updatingProject, setUpdatingProject] = useState(false);
+  const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
+  const [employeeTitle, setEmployeeTitle] = useState<string | null>(null);
+  const [ptoCredit, setPtoCredit] = useState<number | null>(null);
+  const [weeklyPtoRate, setWeeklyPtoRate] = useState<number | null>(null);
+  const [sickDaysLeft, setSickDaysLeft] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [originalFormData, setOriginalFormData] = useState(formData);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>('');
+  const [emailVerified, setEmailVerified] = useState<boolean>(false);
+  const [isActive, setIsActive] = useState<boolean>(true);
+  const [createdAt, setCreatedAt] = useState<string>('');
+  const [updatedAt, setUpdatedAt] = useState<string>('');
+  const [updatingRole, setUpdatingRole] = useState(false);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -68,9 +85,11 @@ export default function AdminProfilePage() {
       if (response.success && response.data) {
         const projectsData = (response.data as any).projects || [];
         setProjects(projectsData);
+      } else {
+        setError('Failed to load projects list');
       }
     } catch (err: any) {
-      // Silently fail - projects are optional
+      setError(err.response?.data?.error || 'Failed to load projects list');
     }
   };
 
@@ -80,16 +99,25 @@ export default function AdminProfilePage() {
       const response = await apiClient.getProfile();
       if (response.success && response.data?.user) {
         const user = response.data.user;
+        setCurrentUserId(user.id);
+        setUserRole(user.role || '');
+        setEmailVerified(user.emailVerified || false);
+        setIsActive(user.isActive !== undefined ? user.isActive : true);
+        setCreatedAt(user.createdAt || '');
+        setUpdatedAt(user.updatedAt || '');
         const loadedData = {
           firstName: user.firstName || '',
           middleName: user.middleName || '',
           lastName: user.lastName || '',
+          email: user.email || '',
           phone: formatPhoneNumber(user.phone || ''),
           address1: user.address1 || '',
           address2: user.address2 || '',
           city: user.city || '',
           state: user.state || '',
           zipCode: user.zipCode || '',
+          dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+          ssn: user.ssn || '',
           emergencyContact: user.emergencyContacts?.[0] ? {
             firstName: user.emergencyContacts[0].firstName || '',
             lastName: user.emergencyContacts[0].lastName || '',
@@ -112,18 +140,34 @@ export default function AdminProfilePage() {
         setFormData(loadedData);
         setOriginalFormData(loadedData);
         
-        if (user.employee?.currentProjectId) {
-          setCurrentProjectId(user.employee.currentProjectId);
-          if (user.employee.currentProject && user.employee.currentProject.jobNumber) {
-            setCurrentProjectName(`${user.employee.currentProject.name} - ${user.employee.currentProject.jobNumber}`);
-          } else if (user.employee.currentProject) {
-            setCurrentProjectName(user.employee.currentProject.name);
+        // Check if user has an employee profile
+        if (user.employee) {
+          setHasEmployeeProfile(true);
+          setEmployeeTitle(user.employee.title || null);
+          setPtoCredit(user.employee.ptoCredit ?? null);
+          setWeeklyPtoRate(user.employee.weeklyPtoRate ?? null);
+          setSickDaysLeft(user.employee.sickDaysLeft ?? null);
+          if (user.employee.currentProjectId) {
+            setCurrentProjectId(user.employee.currentProjectId);
+            if (user.employee.currentProject && user.employee.currentProject.jobNumber) {
+              setCurrentProjectName(`${user.employee.currentProject.name} - ${user.employee.currentProject.jobNumber}`);
+            } else if (user.employee.currentProject) {
+              setCurrentProjectName(user.employee.currentProject.name);
+            } else {
+              setCurrentProjectName('');
+            }
           } else {
+            setCurrentProjectId('');
             setCurrentProjectName('');
           }
         } else {
+          setHasEmployeeProfile(false);
+          setEmployeeTitle(null);
           setCurrentProjectId('');
           setCurrentProjectName('');
+          setPtoCredit(null);
+          setWeeklyPtoRate(null);
+          setSickDaysLeft(null);
         }
       } else {
         setError('Failed to load profile');
@@ -303,12 +347,15 @@ export default function AdminProfilePage() {
         firstName: formData.firstName,
         middleName: formData.middleName || null,
         lastName: formData.lastName,
+        email: formData.email,
         phone: getPhoneDigits(formData.phone),
         address1: formData.address1,
         address2: formData.address2 || null,
         city: formData.city,
         state: formData.state.toUpperCase(),
         zipCode: formData.zipCode,
+        dateOfBirth: formData.dateOfBirth,
+        ssn: formData.ssn,
       };
 
       payload.emergencyContact = {
@@ -450,6 +497,45 @@ export default function AdminProfilePage() {
                   <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
                 )}
               </div>
+
+              <div className={styles.field}>
+                <label htmlFor="dateOfBirth">Date of Birth{isEditing && ' *'}</label>
+                {isEditing ? (
+                  <input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                  />
+                ) : (
+                  <div className={styles.fieldValue}>
+                    {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="ssn">SSN{isEditing && ' *'}</label>
+                {isEditing ? (
+                  <input
+                    id="ssn"
+                    name="ssn"
+                    type="text"
+                    value={formData.ssn}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                    placeholder="XXX-XX-XXXX"
+                    pattern="[0-9]{3}-[0-9]{2}-[0-9]{4}"
+                    maxLength={11}
+                  />
+                ) : (
+                  <div className={styles.fieldValue}>{formData.ssn || 'N/A'}</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -457,6 +543,23 @@ export default function AdminProfilePage() {
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Contact Information</h2>
             <div className={styles.fields}>
+              <div className={`${styles.field} ${styles.fieldFullWidth}`}>
+                <label htmlFor="email">Email{isEditing && ' *'}</label>
+                {isEditing ? (
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    disabled={loading}
+                  />
+                ) : (
+                  <div className={styles.fieldValue}>{formData.email || 'N/A'}</div>
+                )}
+              </div>
+
               <div className={styles.field}>
                 <label htmlFor="phone">Phone{isEditing && ' *'}</label>
                 {isEditing ? (
@@ -764,35 +867,150 @@ export default function AdminProfilePage() {
             </div>
           </div>
 
-          {/* Current Project Section */}
+          {/* Employee Information Section - Always visible for all users */}
           <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>Current Project</h2>
+            <h2 className={styles.sectionTitle}>Employee Information</h2>
             <div className={styles.fields}>
               <div className={styles.field}>
+                <label>Title</label>
+                <div className={styles.fieldValue}>{employeeTitle || 'N/A'}</div>
+              </div>
+              <div className={styles.field}>
                 <label htmlFor="currentProject">Current Project</label>
-                {isEditing ? (
+                {hasEmployeeProfile ? (
                   <>
                     <select
                       id="currentProject"
-                      value={currentProjectId}
+                      value={currentProjectId || ''}
                       onChange={handleProjectChange}
                       disabled={updatingProject || loading}
                       className={styles.select}
                     >
                       <option value="">No Project Assigned</option>
-                      {projects.map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.name} - {project.jobNumber}
-                        </option>
-                      ))}
+                      {projects.length === 0 ? (
+                        <option value="" disabled>No projects available</option>
+                      ) : (
+                        projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name} - {project.jobNumber}
+                          </option>
+                        ))
+                      )}
                     </select>
                     {updatingProject && <p className={styles.helpText}>Updating...</p>}
+                    {!currentProjectId && projects.length > 0 && (
+                      <p className={styles.helpText}>Select a project to assign yourself to it</p>
+                    )}
                   </>
                 ) : (
                   <div className={styles.fieldValue}>
                     {currentProjectName || 'No Project Assigned'}
                   </div>
                 )}
+              </div>
+              <div className={styles.field}>
+                <label>PTO Credit</label>
+                <div className={styles.fieldValue}>
+                  {ptoCredit !== null ? `${ptoCredit.toFixed(2)} hours` : 'N/A'}
+                </div>
+              </div>
+              <div className={styles.field}>
+                <label>Weekly PTO Rate</label>
+                <div className={styles.fieldValue}>
+                  {weeklyPtoRate !== null ? `${weeklyPtoRate.toFixed(2)} hours/week` : 'N/A'}
+                </div>
+              </div>
+              <div className={styles.field}>
+                <label>Sick Days Left</label>
+                <div className={styles.fieldValue}>
+                  {sickDaysLeft !== null ? sickDaysLeft : 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Account Information Section */}
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Account Information</h2>
+            <div className={styles.fields}>
+              <div className={styles.field}>
+                <label htmlFor="role">Role{isEditing && ' *'}</label>
+                {isEditing ? (
+                  <select
+                    id="role"
+                    name="role"
+                    value={userRole}
+                    onChange={async (e) => {
+                      const newRole = e.target.value as 'USER' | 'ADMIN' | 'ACCOUNTANT' | 'HR' | 'PROJECT_MANAGER';
+                      if (currentUserId && newRole !== userRole) {
+                        setUpdatingRole(true);
+                        setError('');
+                        setSuccess('');
+                        try {
+                          const response = await apiClient.updateUserRole(currentUserId, newRole);
+                          if (response.success) {
+                            setUserRole(newRole);
+                            setSuccess('Role updated successfully');
+                            setTimeout(() => setSuccess(''), 3000);
+                          } else {
+                            setError(response.error || 'Failed to update role');
+                          }
+                        } catch (err: any) {
+                          setError(err.response?.data?.error || 'Failed to update role');
+                        } finally {
+                          setUpdatingRole(false);
+                        }
+                      }
+                    }}
+                    disabled={loading || updatingRole}
+                    className={styles.select}
+                  >
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="ACCOUNTANT">Accountant</option>
+                    <option value="HR">HR</option>
+                    <option value="PROJECT_MANAGER">Project Manager</option>
+                  </select>
+                ) : (
+                  <div className={styles.fieldValue}>{userRole || 'N/A'}</div>
+                )}
+                {updatingRole && <p className={styles.helpText}>Updating...</p>}
+              </div>
+
+              <div className={styles.field}>
+                <label>Email Verified</label>
+                <div className={styles.fieldValue}>
+                  {emailVerified ? (
+                    <span className={styles.verified}>✓ Verified</span>
+                  ) : (
+                    <span className={styles.unverified}>✗ Not Verified</span>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label>Account Status</label>
+                <div className={styles.fieldValue}>
+                  {isActive ? (
+                    <span className={styles.activeStatus}>Active</span>
+                  ) : (
+                    <span className={styles.inactiveStatus}>Deactivated</span>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label>Account Created</label>
+                <div className={styles.fieldValue}>
+                  {createdAt ? new Date(createdAt).toLocaleString() : 'N/A'}
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label>Last Updated</label>
+                <div className={styles.fieldValue}>
+                  {updatedAt ? new Date(updatedAt).toLocaleString() : 'N/A'}
+                </div>
               </div>
             </div>
           </div>
@@ -817,6 +1035,10 @@ export default function AdminProfilePage() {
             </div>
           )}
         </form>
+
+        <CertificatesSection />
+
+        <DocumentsSection />
 
         {/* Change Password Modal */}
         {isEditingPassword && (

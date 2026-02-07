@@ -117,6 +117,7 @@ export default function UserDetailPage() {
     city: '',
     state: '',
     zipCode: '',
+    ssn: '',
     emergencyContact: {
       firstName: '',
       lastName: '',
@@ -175,18 +176,19 @@ export default function UserDetailPage() {
       if (response.success && response.data) {
         const userData = (response.data as any).user;
         setUser(userData);
-        setFormData({
-          firstName: userData.firstName || '',
-          middleName: userData.middleName || '',
-          lastName: userData.lastName || '',
-          email: userData.email || '',
-          phone: formatPhoneNumber(userData.phone || ''),
-          address1: userData.address1 || '',
-          address2: userData.address2 || '',
-          city: userData.city || '',
-          state: userData.state || '',
-          zipCode: userData.zipCode || '',
-          emergencyContact: userData.emergencyContacts?.[0] ? {
+          setFormData({
+            firstName: userData.firstName || '',
+            middleName: userData.middleName || '',
+            lastName: userData.lastName || '',
+            email: userData.email || '',
+            phone: formatPhoneNumber(userData.phone || ''),
+            address1: userData.address1 || '',
+            address2: userData.address2 || '',
+            city: userData.city || '',
+            state: userData.state || '',
+            zipCode: userData.zipCode || '',
+            ssn: userData.ssn || '',
+            emergencyContact: userData.emergencyContacts?.[0] ? {
             firstName: userData.emergencyContacts[0].firstName || '',
             lastName: userData.emergencyContacts[0].lastName || '',
             phone: formatPhoneNumber(userData.emergencyContacts[0].phone || ''),
@@ -283,39 +285,25 @@ export default function UserDetailPage() {
   const loadUserDocuments = async () => {
     try {
       setLoadingDocuments(true);
-      console.log('Loading documents for user:', userId);
       const [certsResponse, docsResponse] = await Promise.all([
         apiClient.getUserDocuments(userId, 'CERTIFICATE'),
         apiClient.getUserDocuments(userId, 'PERSONAL_DOCUMENT'),
       ]);
       
-      console.log('Certificates response:', certsResponse);
-      console.log('Documents response:', docsResponse);
-      
       if (certsResponse.success && certsResponse.data) {
         const certs = (certsResponse.data as any).documents || [];
-        console.log('Setting certificates:', certs);
         setCertificates(certs);
       } else {
-        console.warn('Failed to load certificates:', certsResponse.error);
         setCertificates([]);
       }
       
       if (docsResponse.success && docsResponse.data) {
         const docs = (docsResponse.data as any).documents || [];
-        console.log('Setting personal documents:', docs);
         setPersonalDocuments(docs);
       } else {
-        console.warn('Failed to load personal documents:', docsResponse.error);
         setPersonalDocuments([]);
       }
     } catch (err: any) {
-      console.error('Failed to load documents:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      });
       setCertificates([]);
       setPersonalDocuments([]);
     } finally {
@@ -413,7 +401,6 @@ export default function UserDetailPage() {
         setError(response.error || 'Failed to upload certificate');
       }
     } catch (err: any) {
-      console.error('Upload error:', err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to upload certificate';
       setError(errorMessage);
       setTimeout(() => setError(''), 5000);
@@ -461,7 +448,6 @@ export default function UserDetailPage() {
         setError(response.error || 'Failed to upload document');
       }
     } catch (err: any) {
-      console.error('Upload error:', err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to upload document';
       setError(errorMessage);
       setTimeout(() => setError(''), 5000);
@@ -938,6 +924,42 @@ export default function UserDetailPage() {
                   // Load latest employee profile data and projects before entering edit mode
                   await loadEmployeeProfile();
                   await loadProjects();
+                  
+                  // Ensure formData is prefilled with current user values
+                  if (user) {
+                    setFormData({
+                      firstName: user.firstName || '',
+                      middleName: user.middleName || '',
+                      lastName: user.lastName || '',
+                      email: user.email || '',
+                      phone: formatPhoneNumber(user.phone || ''),
+                      address1: user.address1 || '',
+                      address2: user.address2 || '',
+                      city: user.city || '',
+                      state: user.state || '',
+                      zipCode: user.zipCode || '',
+                      ssn: user.ssn || '',
+                      emergencyContact: user.emergencyContacts?.[0] ? {
+                        firstName: user.emergencyContacts[0].firstName || '',
+                        lastName: user.emergencyContacts[0].lastName || '',
+                        phone: formatPhoneNumber(user.emergencyContacts[0].phone || ''),
+                        email: user.emergencyContacts[0].email || '',
+                        relationship: user.emergencyContacts[0].relationship || '',
+                      } : {
+                        firstName: '',
+                        lastName: '',
+                        phone: '',
+                        email: '',
+                        relationship: '',
+                      },
+                      pantsSize: user.pantsSize || '',
+                      shirtSize: user.shirtSize || '',
+                      glovesSize: user.glovesSize || '',
+                      vestSize: user.vestSize || '',
+                      jacketSize: user.jacketSize || '',
+                    });
+                  }
+                  
                   if (employeeProfile) {
                     setEmployeeTitle(employeeProfile.title || '');
                     setEmployeePaymentType(employeeProfile.paymentType);
@@ -1071,7 +1093,7 @@ export default function UserDetailPage() {
                 <div className={styles.value}>{user.lastName}</div>
               )}
             </div>
-            <div className={styles.field}>
+            <div className={`${styles.field} ${styles.fieldFullWidth}`}>
               <label>Email</label>
               {isEditing ? (
                 <input
@@ -1110,8 +1132,22 @@ export default function UserDetailPage() {
               </div>
             </div>
             <div className={styles.field}>
-              <label>SSN</label>
-              <div className={styles.value}>{user.ssn}</div>
+              <label>SSN{isEditing && ' *'}</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="ssn"
+                  value={formData.ssn}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                  placeholder="XXX-XX-XXXX"
+                  pattern="[0-9]{3}-[0-9]{2}-[0-9]{4}"
+                  maxLength={11}
+                />
+              ) : (
+                <div className={styles.value}>{user.ssn}</div>
+              )}
             </div>
             <div className={styles.field}>
               <label>Role</label>
@@ -1714,6 +1750,7 @@ export default function UserDetailPage() {
                     city: user.city || '',
                     state: user.state || '',
                     zipCode: user.zipCode || '',
+                    ssn: user.ssn || '',
                     emergencyContact: user.emergencyContacts?.[0] ? {
                       firstName: user.emergencyContacts[0].firstName || '',
                       lastName: user.emergencyContacts[0].lastName || '',

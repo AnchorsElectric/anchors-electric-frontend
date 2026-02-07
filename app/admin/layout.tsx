@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getAuthToken, removeAuthToken } from '@/lib/utils/auth';
 import { apiClient } from '@/lib/api/client';
+import { canAccessRoute, getDefaultRoute, UserRole } from '@/lib/config/routes';
+import AppNavigation from '@/components/navigation/AppNavigation';
 import styles from './admin-layout.module.scss';
 
 export default function AdminLayout({
@@ -13,9 +15,8 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'profile' | 'projects' | 'pay-periods'>('profile');
 
   useEffect(() => {
     const token = getAuthToken();
@@ -24,39 +25,65 @@ export default function AdminLayout({
       return;
     }
 
-    checkAdminStatus();
+    checkAccess();
   }, [router]);
 
   useEffect(() => {
-    // Set active tab based on current path
-    if (pathname?.startsWith('/admin/users')) {
-      setActiveTab('users');
-    } else if (pathname?.startsWith('/admin/projects')) {
-      setActiveTab('projects');
-    } else if (pathname?.startsWith('/admin/pay-periods')) {
-      setActiveTab('pay-periods');
-    } else if (pathname === '/admin/profile') {
-      setActiveTab('profile');
-    } else {
-      // Default to profile if path doesn't match
-      setActiveTab('profile');
+    // Check route access when pathname changes
+    if (userRole && pathname && !loading) {
+      // Allow nested routes (e.g., /admin/users/[id])
+      const basePath = pathname.split('/').slice(0, 3).join('/') || pathname;
+      const hasAccess = canAccessRoute(basePath, userRole) || 
+                       canAccessRoute(pathname, userRole);
+      
+      if (!hasAccess) {
+        router.push('/unauthorized');
+      }
     }
-  }, [pathname]);
+  }, [pathname, userRole, loading, router]);
 
-  const checkAdminStatus = async () => {
+  const checkAccess = async () => {
     try {
       setLoading(true);
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
-        const isUserAdmin = (response.data as any).isAdmin || false;
-        setIsAdmin(isUserAdmin);
-        
-        if (!isUserAdmin) {
-          router.push('/employee/profile');
+        const data = response.data as any;
+        const role = (data.user?.role || null) as UserRole | null;
+        setUserRole(role);
+
+        if (!role) {
+          router.push('/login');
+          return;
         }
+        
+        // Check if user can access any admin routes
+        const canAccessAdminRoutes = canAccessRoute('/admin/profile', role) ||
+                                   canAccessRoute('/admin/users', role) ||
+                                   canAccessRoute('/admin/projects', role) ||
+                                   canAccessRoute('/admin/pay-periods', role);
+
+        if (!canAccessAdminRoutes) {
+          // User doesn't have access to admin routes, redirect to their default
+          const defaultRoute = getDefaultRoute(role);
+          router.push(defaultRoute);
+          return;
+        }
+
+        // Check current route access
+        if (pathname) {
+          const basePath = pathname.split('/').slice(0, 3).join('/') || pathname;
+          const hasAccess = canAccessRoute(basePath, role) || 
+                           canAccessRoute(pathname, role);
+          
+          if (!hasAccess) {
+            router.push('/unauthorized');
+          }
+        }
+      } else {
+        router.push('/login');
       }
     } catch (err) {
-      router.push('/dashboard');
+      router.push('/login');
     } finally {
       setLoading(false);
     }
@@ -67,19 +94,6 @@ export default function AdminLayout({
     router.push('/login');
   };
 
-  const handleTabClick = (tab: 'users' | 'profile' | 'projects' | 'pay-periods') => {
-    setActiveTab(tab);
-    if (tab === 'users') {
-      router.push('/admin/users');
-    } else if (tab === 'projects') {
-      router.push('/admin/projects');
-    } else if (tab === 'pay-periods') {
-      router.push('/admin/pay-periods');
-    } else {
-      router.push('/admin/profile');
-    }
-  };
-
   if (loading) {
     return (
       <div className={styles.adminContainer}>
@@ -88,44 +102,19 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAdmin) {
+  if (!userRole) {
     return null;
   }
 
   return (
     <div className={styles.adminContainer}>
       <div className={styles.adminHeader}>
-        <h1 className={styles.adminTitle}>Admin Dashboard</h1>
+        <h1 className={styles.adminTitle}>Dashboard</h1>
         <button onClick={handleLogout} className={styles.logoutButton}>
           Logout
         </button>
       </div>
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === 'profile' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('profile')}
-        >
-          Profile
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'users' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('users')}
-        >
-          Users
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'projects' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('projects')}
-        >
-          Projects
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'pay-periods' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('pay-periods')}
-        >
-          Pay Periods
-        </button>
-      </div>
+      <AppNavigation userRole={userRole} />
       <div className={styles.content}>
         {children}
       </div>

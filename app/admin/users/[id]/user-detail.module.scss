@@ -118,6 +118,10 @@
   gap: 1.5rem;
 }
 
+.fieldFullWidth {
+  grid-column: 1 / -1;
+}
+
 .field {
   display: flex;
   flex-direction: column;

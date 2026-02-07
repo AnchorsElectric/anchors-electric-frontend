@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getAuthToken, removeAuthToken } from '@/lib/utils/auth';
 import { apiClient } from '@/lib/api/client';
+import { canAccessRoute, getDefaultRoute, UserRole } from '@/lib/config/routes';
+import AppNavigation from '@/components/navigation/AppNavigation';
 import styles from './employee-layout.module.scss';
 
 export default function EmployeeLayout({
@@ -13,9 +15,8 @@ export default function EmployeeLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'time-entries' | 'pay-periods'>('profile');
 
   useEffect(() => {
     const token = getAuthToken();
@@ -24,48 +25,64 @@ export default function EmployeeLayout({
       return;
     }
 
-    checkEmployeeProfile();
+    checkAccess();
   }, [router]);
 
   useEffect(() => {
-    // Set active tab based on current path
-    if (pathname === '/employee/time-entries') {
-      setActiveTab('time-entries');
-    } else if (pathname === '/employee/pay-periods') {
-      setActiveTab('pay-periods');
-    } else if (pathname === '/employee/profile') {
-      setActiveTab('profile');
-    } else {
-      // Default to profile if path doesn't match
-      setActiveTab('profile');
+    // Check route access when pathname changes
+    if (userRole && pathname && !loading) {
+      // Allow nested routes
+      const basePath = pathname.split('/').slice(0, 3).join('/') || pathname;
+      const hasAccess = canAccessRoute(basePath, userRole) || 
+                       canAccessRoute(pathname, userRole);
+      
+      if (!hasAccess) {
+        router.push('/unauthorized');
+      }
     }
-  }, [pathname, hasEmployeeProfile]);
+  }, [pathname, userRole, loading, router]);
 
-  const checkEmployeeProfile = async () => {
+  const checkAccess = async () => {
     try {
       setLoading(true);
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
-        const user = (response.data as any).user;
-        const isUserAdmin = (response.data as any).isAdmin || false;
+        const data = response.data as any;
+        const role = (data.user?.role || null) as UserRole | null;
         
-        // Redirect admins away from employee section
-        if (isUserAdmin) {
-          router.push('/admin/profile');
+        setUserRole(role);
+
+        if (!role) {
+          router.push('/login');
           return;
         }
 
-        // Check if user has employee profile
-        if (user.employee && user.employee !== null && user.employee !== undefined) {
-          setHasEmployeeProfile(true);
-        } else {
-          // User doesn't have employee profile - allow access but show limited tabs
-          setHasEmployeeProfile(false);
+        // Check if user can access any employee routes
+        const canAccessEmployeeRoutes = canAccessRoute('/employee/profile', role) ||
+                                      canAccessRoute('/employee/time-entries', role) ||
+                                      canAccessRoute('/employee/pay-periods', role);
+
+        // Staff roles might access admin routes, so don't redirect them away
+        if (!canAccessEmployeeRoutes && role === 'USER') {
+          router.push(getDefaultRoute(role));
+          return;
         }
+
+        // Check current route access
+        if (pathname) {
+          const basePath = pathname.split('/').slice(0, 3).join('/') || pathname;
+          const hasAccess = canAccessRoute(basePath, role) || 
+                           canAccessRoute(pathname, role);
+          
+          if (!hasAccess) {
+            router.push('/unauthorized');
+          }
+        }
+      } else {
+        router.push('/login');
       }
     } catch (err) {
-      // Don't redirect on error - allow user to stay on employee pages
-      setHasEmployeeProfile(false);
+      router.push('/login');
     } finally {
       setLoading(false);
     }
@@ -76,23 +93,16 @@ export default function EmployeeLayout({
     router.push('/login');
   };
 
-  const handleTabClick = (tab: 'profile' | 'time-entries' | 'pay-periods') => {
-    setActiveTab(tab);
-    if (tab === 'time-entries') {
-      router.push('/employee/time-entries');
-    } else if (tab === 'pay-periods') {
-      router.push('/employee/pay-periods');
-    } else {
-      router.push('/employee/profile');
-    }
-  };
-
   if (loading) {
     return (
       <div className={styles.employeeContainer}>
         <div className={styles.loading}>Loading...</div>
       </div>
     );
+  }
+
+  if (!userRole) {
+    return null;
   }
 
   return (
@@ -103,34 +113,10 @@ export default function EmployeeLayout({
           Logout
         </button>
       </div>
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === 'profile' ? styles.activeTab : ''}`}
-          onClick={() => handleTabClick('profile')}
-        >
-          Profile
-        </button>
-        {hasEmployeeProfile && (
-          <>
-            <button
-              className={`${styles.tab} ${activeTab === 'time-entries' ? styles.activeTab : ''}`}
-              onClick={() => handleTabClick('time-entries')}
-            >
-              Time Entries
-            </button>
-            <button
-              className={`${styles.tab} ${activeTab === 'pay-periods' ? styles.activeTab : ''}`}
-              onClick={() => handleTabClick('pay-periods')}
-            >
-              Pay Period History
-            </button>
-          </>
-        )}
-      </div>
+      <AppNavigation userRole={userRole} />
       <div className={styles.content}>
         {children}
       </div>
     </div>
   );
 }
-

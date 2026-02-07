@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { setAuthToken } from '@/lib/utils/auth';
+import { getDefaultRoute, UserRole } from '@/lib/config/routes';
 import styles from './login.module.scss';
 
 function LoginContent() {
@@ -33,10 +34,13 @@ function LoginContent() {
         const { token, user } = response.data as { token: string; user: any };
         setAuthToken(token);
         
-        if (user?.role === 'ADMIN') {
-          router.push('/admin/profile');
+        const userRole = (user?.role || null) as UserRole | null;
+        
+        if (userRole) {
+          const defaultRoute = getDefaultRoute(userRole);
+          router.push(defaultRoute);
         } else {
-          router.push('/employee/profile');
+          router.push('/login');
         }
       } else {
         setError(response.error || 'Login failed. Please check your credentials and try again.');
