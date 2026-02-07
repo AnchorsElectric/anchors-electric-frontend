@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import { canAccessRoute, getDefaultRoute, UserRole } from '@/lib/config/routes';
+import { formatPhoneNumber } from '@/lib/utils/phone-format';
 import styles from './users.module.scss';
 
 interface User {
@@ -204,10 +205,10 @@ export default function AdminUsersPage() {
                       {user.middleName ? ` ${user.middleName}` : ''} {user.lastName}
                     </td>
                     <td>{user.email}</td>
-                    <td>{user.phone}</td>
+                    <td>{formatPhoneNumber(user.phone || '') || 'N/A'}</td>
                     <td>
                       <span className={`${styles.role} ${styles[user.role.toLowerCase()]}`}>
-                        {user.role}
+                        {user.role === 'PROJECT_MANAGER' ? 'PM' : user.role}
                       </span>
                     </td>
                     <td>

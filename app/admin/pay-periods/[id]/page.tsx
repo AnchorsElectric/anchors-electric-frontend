@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
+import { UserRole } from '@/lib/config/routes';
 import styles from '../pay-periods.module.scss';
 import timeEntryStyles from '../../../employee/time-entries/time-entries.module.scss';
 
@@ -75,6 +76,10 @@ export default function AdminPayPeriodDetailPage() {
   const [processing, setProcessing] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+  const canApproveRejectRole = userRole === 'ADMIN' || userRole === 'HR' || userRole === 'PROJECT_MANAGER';
+  const canMarkAsPaid = userRole === 'ADMIN' || userRole === 'HR' || userRole === 'ACCOUNTANT';
 
   useEffect(() => {
     const token = getAuthToken();
@@ -82,6 +87,18 @@ export default function AdminPayPeriodDetailPage() {
       router.push('/login');
       return;
     }
+    const loadProfile = async () => {
+      try {
+        const response = await apiClient.getProfile();
+        if (response.success && response.data) {
+          const role = (response.data as any).user?.role ?? null;
+          setUserRole(role as UserRole | null);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadProfile();
     loadPayPeriod();
   }, [router, payPeriodId]);
 
@@ -152,6 +169,27 @@ export default function AdminPayPeriodDetailPage() {
       setProcessing(false);
       setShowRejectModal(false);
       setRejectionReason('');
+    }
+  };
+
+  const handleMarkAsPaid = async () => {
+    try {
+      setProcessing(true);
+      setError('');
+      setSuccess('');
+      const response = await apiClient.markPayPeriodAsPaid(payPeriodId);
+      if (response.success) {
+        setSuccess('Pay period marked as paid successfully!');
+        setTimeout(() => {
+          router.push('/admin/pay-periods');
+        }, 1500);
+      } else {
+        setError(response.error || 'Failed to mark pay period as paid');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to mark pay period as paid');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -401,7 +439,7 @@ export default function AdminPayPeriodDetailPage() {
   }
 
   const summary = calculateWeekSummary();
-  const canApproveReject = payPeriod.status === 'SUBMITTED';
+  const canApproveReject = payPeriod.status === 'SUBMITTED' && canApproveRejectRole;
 
   return (
     <div className={timeEntryStyles.container}>
@@ -478,6 +516,17 @@ export default function AdminPayPeriodDetailPage() {
               disabled={processing}
             >
               Reject
+            </button>
+          </div>
+        )}
+        {payPeriod.status === 'APPROVED' && canMarkAsPaid && (
+          <div className={timeEntryStyles.clearWeekSection} style={{ marginTop: '2rem' }}>
+            <button 
+              onClick={handleMarkAsPaid} 
+              className={timeEntryStyles.submitButton}
+              disabled={processing}
+            >
+              {processing ? 'Processing...' : 'Mark as Paid'}
             </button>
           </div>
         )}

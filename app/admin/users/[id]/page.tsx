@@ -7,6 +7,8 @@ import { getAuthToken } from '@/lib/utils/auth';
 import { canAccessRoute, UserRole } from '@/lib/config/routes';
 import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
 import styles from './user-detail.module.scss';
+import docStyles from '@/components/documents/documents.module.scss';
+import profileSectionStyles from '@/app/employee/profile/edit.module.scss';
 
 interface User {
   id: string;
@@ -21,7 +23,7 @@ interface User {
   state: string;
   zipCode: string;
   dateOfBirth: string;
-  ssn: string;
+  ssn?: string; // Only present for ADMIN/HR when viewing another user
   role: string;
   emailVerified: boolean;
   isActive: boolean;
@@ -53,6 +55,8 @@ export default function UserDetailPage() {
   const [success, setSuccess] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const canManageUser = userRole === 'ADMIN' || userRole === 'HR';
+  const canChangeRole = userRole === 'ADMIN';
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [employeeProfile, setEmployeeProfile] = useState<{ 
@@ -108,6 +112,7 @@ export default function UserDetailPage() {
     file: null as File | null,
   });
   const [updatingRole, setUpdatingRole] = useState(false);
+  const [savingProjectUpdate, setSavingProjectUpdate] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     middleName: '',
@@ -151,10 +156,10 @@ export default function UserDetailPage() {
     }
   }, [router, userId]);
 
-  // Non-admins must not be in edit mode (view-only)
+  // Users who cannot manage (edit) must not be in edit mode (view-only)
   useEffect(() => {
-    if (!isAdmin) setIsEditing(false);
-  }, [isAdmin]);
+    if (!canManageUser) setIsEditing(false);
+  }, [canManageUser]);
 
   const checkAdminStatus = async () => {
     try {
@@ -923,13 +928,18 @@ export default function UserDetailPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>User Details</h1>
-        <div className={styles.headerActions}>
-          {!isEditing && isAdmin && (
+      <form id="mainProfileForm" onSubmit={handleSubmit}>
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <div>
+            <h1 className={styles.title}>User Details</h1>
+            <p className={styles.subtitle}>View and manage user information</p>
+          </div>
+          <div className={styles.headerActions}>
+          {!isEditing && canManageUser && (
             <>
               {user && employeeProfile && (
-                <button onClick={async () => {
+                <button type="button" onClick={async () => {
                   // Load latest employee profile data and projects before entering edit mode
                   await loadEmployeeProfile();
                   await loadProjects();
@@ -993,7 +1003,7 @@ export default function UserDetailPage() {
                 </button>
               )}
               {!employeeProfile && (
-                <button onClick={async () => {
+                <button type="button" onClick={async () => {
                   // Load projects before opening modal
                   await loadProjects();
                   // Initialize for new employee profile
@@ -1014,6 +1024,7 @@ export default function UserDetailPage() {
               {user.isActive ? (
                 currentUserId && currentUserId !== userId && (
                   <button 
+                    type="button"
                     onClick={() => setShowDeactivateModal(true)} 
                     className={styles.deactivateButton}
                     disabled={saving}
@@ -1024,6 +1035,7 @@ export default function UserDetailPage() {
               ) : (
                 currentUserId && currentUserId !== userId && (
                   <button 
+                    type="button"
                     onClick={handleReactivate} 
                     className={styles.reactivateButton}
                     disabled={saving}
@@ -1033,31 +1045,30 @@ export default function UserDetailPage() {
                 )
               )}
               {currentUserId && currentUserId !== userId && (
-                <button onClick={() => setShowDeleteModal(true)} className={styles.deleteButton}>
+                <button type="button" onClick={() => setShowDeleteModal(true)} className={styles.deleteButton}>
                   Delete User
                 </button>
               )}
             </>
           )}
-          <button onClick={() => router.push('/admin/users')} className={styles.backButton}>
+          <button type="button" onClick={() => router.push('/admin/users')} className={styles.backButton}>
             ← Back to Users
           </button>
+          </div>
         </div>
-      </div>
 
-      {success && (
-        <div className={styles.success}>{success}</div>
-      )}
+        {success && (
+          <div className={styles.success}>{success}</div>
+        )}
 
-      {error && (
-        <div className={styles.error}>{error}</div>
-      )}
+        {error && (
+          <div className={styles.error}>{error}</div>
+        )}
 
-      <form onSubmit={handleSubmit} className={styles.card}>
         {/* Personal Information */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Personal Information</h2>
-          <div className={styles.grid}>
+          <div className={styles.fields}>
             <div className={styles.field}>
               <label>First Name</label>
               {isEditing ? (
@@ -1070,7 +1081,7 @@ export default function UserDetailPage() {
                   className={styles.input}
                 />
               ) : (
-                <div className={styles.value}>{user.firstName}</div>
+                <div className={styles.fieldValue}>{user.firstName}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1084,7 +1095,7 @@ export default function UserDetailPage() {
                   className={styles.input}
                 />
               ) : (
-                <div className={styles.value}>{user.middleName || 'N/A'}</div>
+                <div className={styles.fieldValue}>{user.middleName || 'N/A'}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1099,48 +1110,18 @@ export default function UserDetailPage() {
                   className={styles.input}
                 />
               ) : (
-                <div className={styles.value}>{user.lastName}</div>
+                <div className={styles.fieldValue}>{user.lastName}</div>
               )}
             </div>
-            <div className={`${styles.field} ${styles.fieldFullWidth}`}>
-              <label>Email</label>
-              {isEditing ? (
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className={styles.input}
-                />
-              ) : (
-                <div className={styles.value}>{user.email}</div>
-              )}
-            </div>
-            <div className={styles.field}>
-              <label>Phone</label>
-              {isEditing ? (
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                  className={styles.input}
-                  placeholder="(XXX) XXX-XXXX"
-                  maxLength={14}
-                />
-              ) : (
-                <div className={styles.value}>{user.phone}</div>
-              )}
-            </div>
-            <div className={styles.field}>
-              <label>Date of Birth</label>
-              <div className={styles.value}>
-                {new Date(user.dateOfBirth).toLocaleDateString()}
+            {canManageUser && (
+              <div className={styles.field}>
+                <label>Date of Birth</label>
+                <div className={styles.fieldValue}>
+                  {new Date(user.dateOfBirth).toLocaleDateString()}
+                </div>
               </div>
-            </div>
-            {isAdmin && (
+            )}
+            {canManageUser && (
               <div className={styles.field}>
                 <label>SSN{isEditing && ' *'}</label>
                 {isEditing ? (
@@ -1156,14 +1137,15 @@ export default function UserDetailPage() {
                     maxLength={11}
                   />
                 ) : (
-                  <div className={styles.value}>{user.ssn}</div>
+                  <div className={styles.fieldValue}>{user.ssn ?? '—'}</div>
                 )}
               </div>
             )}
+            {canManageUser && (
             <div className={styles.field}>
               <label>Role</label>
-              <div className={styles.value}>
-                {isAdmin ? (
+              <div className={styles.fieldValue}>
+                {canChangeRole ? (
                   <>
                     <select
                       value={user.role}
@@ -1184,33 +1166,100 @@ export default function UserDetailPage() {
                 )}
               </div>
             </div>
-            <div className={styles.field}>
-              <label>Account Status</label>
-              <div className={styles.value}>
-                {user.isActive ? (
-                  <span className={styles.activeStatus}>Active</span>
+            )}
+            {canManageUser && (
+              <div className={styles.field}>
+                <label>Account Status</label>
+                <div className={styles.fieldValue}>
+                  {user.isActive ? (
+                    <span className={styles.activeStatus}>Active</span>
+                  ) : (
+                    <span className={styles.inactiveStatus}>Deactivated</span>
+                  )}
+                </div>
+              </div>
+            )}
+            {canManageUser && (
+              <div className={styles.field}>
+                <label>Email Verified</label>
+                <div className={styles.fieldValue}>
+                  {user.emailVerified ? (
+                    <span className={styles.verified}>✓ Verified</span>
+                  ) : (
+                    <span className={styles.unverified}>✗ Not Verified</span>
+                  )}
+                </div>
+              </div>
+            )}
+            {canManageUser && (employeeProfile || isEditing) && (
+              <div className={styles.field}>
+                <label>Current Project</label>
+                {isEditing ? (
+                  <>
+                    <select
+                      value={employeeProjectId}
+                      onChange={(e) => setEmployeeProjectId(e.target.value)}
+                      className={styles.input}
+                      disabled={saving || loadingProjects}
+                    >
+                      <option value="">No project assigned</option>
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name} - {project.jobNumber}
+                        </option>
+                      ))}
+                    </select>
+                  </>
                 ) : (
-                  <span className={styles.inactiveStatus}>Deactivated</span>
+                  <div className={styles.fieldValue}>
+                    {employeeProfile?.currentProject
+                      ? `${employeeProfile.currentProject.name} - ${employeeProfile.currentProject.jobNumber}`
+                      : 'No project assigned'}
+                  </div>
                 )}
               </div>
-            </div>
-            <div className={styles.field}>
-              <label>Email Verified</label>
-              <div className={styles.value}>
-                {user.emailVerified ? (
-                  <span className={styles.verified}>✓ Verified</span>
-                ) : (
-                  <span className={styles.unverified}>✗ Not Verified</span>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Contact Information */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Contact Information</h2>
-          <div className={styles.grid}>
+          <div className={styles.fields}>
+            <div className={`${styles.field} ${styles.fieldFullWidth}`}>
+              <label>Email</label>
+              {isEditing ? (
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                />
+              ) : (
+                <div className={styles.fieldValue}>{user.email}</div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label>Phone</label>
+              {isEditing ? (
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                  className={styles.input}
+                  placeholder="(XXX) XXX-XXXX"
+                  maxLength={14}
+                />
+              ) : (
+                <div className={styles.fieldValue}>{formatPhoneNumber(user.phone || '') || 'N/A'}</div>
+              )}
+            </div>
+            {userRole !== 'PROJECT_MANAGER' && (
+            <>
             <div className={styles.field}>
               <label>Address Line 1</label>
               {isEditing ? (
@@ -1223,7 +1272,7 @@ export default function UserDetailPage() {
                   className={styles.input}
                 />
               ) : (
-                <div className={styles.value}>{user.address1}</div>
+                <div className={styles.fieldValue}>{user.address1}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1237,7 +1286,7 @@ export default function UserDetailPage() {
                   className={styles.input}
                 />
               ) : (
-                <div className={styles.value}>{user.address2 || 'N/A'}</div>
+                <div className={styles.fieldValue}>{user.address2 || 'N/A'}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1252,7 +1301,7 @@ export default function UserDetailPage() {
                   className={styles.input}
                 />
               ) : (
-                <div className={styles.value}>{user.city}</div>
+                <div className={styles.fieldValue}>{user.city}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1269,7 +1318,7 @@ export default function UserDetailPage() {
                   placeholder="XX"
                 />
               ) : (
-                <div className={styles.value}>{user.state}</div>
+                <div className={styles.fieldValue}>{user.state}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1285,18 +1334,22 @@ export default function UserDetailPage() {
                   className={styles.input}
                 />
               ) : (
-                <div className={styles.value}>{user.zipCode}</div>
+                <div className={styles.fieldValue}>{user.zipCode}</div>
               )}
             </div>
+            </>
+            )}
           </div>
         </div>
 
+        {canManageUser && (
+        <>
         {/* Emergency Contacts */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Emergency Contacts</h2>
           <div className={styles.emergencyContacts}>
             <div className={styles.emergencyContact}>
-              <div className={styles.grid}>
+              <div className={styles.fields}>
                 <div className={styles.field}>
                   <label>First Name</label>
                   {isEditing ? (
@@ -1308,7 +1361,7 @@ export default function UserDetailPage() {
                       className={styles.input}
                     />
                   ) : (
-                    <div className={styles.value}>
+                    <div className={styles.fieldValue}>
                       {user.emergencyContacts?.[0]?.firstName || 'N/A'}
                     </div>
                   )}
@@ -1324,7 +1377,7 @@ export default function UserDetailPage() {
                       className={styles.input}
                     />
                   ) : (
-                    <div className={styles.value}>
+                    <div className={styles.fieldValue}>
                       {user.emergencyContacts?.[0]?.lastName || 'N/A'}
                     </div>
                   )}
@@ -1342,8 +1395,8 @@ export default function UserDetailPage() {
                       maxLength={14}
                     />
                   ) : (
-                    <div className={styles.value}>
-                      {user.emergencyContacts?.[0]?.phone || 'N/A'}
+                    <div className={styles.fieldValue}>
+                      {user.emergencyContacts?.[0]?.phone ? formatPhoneNumber(user.emergencyContacts[0].phone) : 'N/A'}
                     </div>
                   )}
                 </div>
@@ -1358,7 +1411,7 @@ export default function UserDetailPage() {
                       className={styles.input}
                     />
                   ) : (
-                    <div className={styles.value}>
+                    <div className={styles.fieldValue}>
                       {user.emergencyContacts?.[0]?.email || 'N/A'}
                     </div>
                   )}
@@ -1374,7 +1427,7 @@ export default function UserDetailPage() {
                       className={styles.input}
                     />
                   ) : (
-                    <div className={styles.value}>
+                    <div className={styles.fieldValue}>
                       {user.emergencyContacts?.[0]?.relationship || 'N/A'}
                     </div>
                   )}
@@ -1383,11 +1436,15 @@ export default function UserDetailPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
 
+        {canManageUser && (
+        <>
         {/* Clothing Sizes */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Clothing Sizes</h2>
-          <div className={styles.grid}>
+          <div className={styles.fields}>
             <div className={styles.field}>
               <label>Pants Size (Waist × Inseam)</label>
               {isEditing ? (
@@ -1404,7 +1461,7 @@ export default function UserDetailPage() {
                   ))}
                 </select>
               ) : (
-                <div className={styles.value}>{user.pantsSize || 'N/A'}</div>
+                <div className={styles.fieldValue}>{user.pantsSize || 'N/A'}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1423,7 +1480,7 @@ export default function UserDetailPage() {
                   ))}
                 </select>
               ) : (
-                <div className={styles.value}>{user.shirtSize || 'N/A'}</div>
+                <div className={styles.fieldValue}>{user.shirtSize || 'N/A'}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1442,7 +1499,7 @@ export default function UserDetailPage() {
                   ))}
                 </select>
               ) : (
-                <div className={styles.value}>{user.glovesSize || 'N/A'}</div>
+                <div className={styles.fieldValue}>{user.glovesSize || 'N/A'}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1461,7 +1518,7 @@ export default function UserDetailPage() {
                   ))}
                 </select>
               ) : (
-                <div className={styles.value}>{user.vestSize || 'N/A'}</div>
+                <div className={styles.fieldValue}>{user.vestSize || 'N/A'}</div>
               )}
             </div>
             <div className={styles.field}>
@@ -1480,21 +1537,81 @@ export default function UserDetailPage() {
                   ))}
                 </select>
               ) : (
-                <div className={styles.value}>{user.jacketSize || 'N/A'}</div>
+                <div className={styles.fieldValue}>{user.jacketSize || 'N/A'}</div>
               )}
             </div>
           </div>
         </div>
+        </>
+        )}
 
-        {/* Employee Profile */}
+        {/* Title + Current Project - only for PROJECT_MANAGER when viewing a user with employee profile */}
+        {userRole === 'PROJECT_MANAGER' && employeeProfile && (
+        <div className={styles.section}>
+          <div className={styles.fields} style={{ marginBottom: '1rem' }}>
+            <div className={styles.field}>
+              <label>Title</label>
+              <div className={styles.fieldValue}>{employeeProfile.title || 'N/A'}</div>
+            </div>
+          </div>
+          <h2 className={styles.sectionTitle}>Current Project</h2>
+          <p style={{ marginBottom: '1rem', color: '#666', fontSize: '0.9rem' }}>
+            Select a project to assign to this user. Changes save automatically.
+          </p>
+          <div className={styles.fields}>
+            <div className={`${styles.field} ${styles.projectSelectField}`}>
+              <label>Project</label>
+              <select
+                value={employeeProjectId}
+                onChange={(e) => {
+                  const newProjectId = e.target.value;
+                  setEmployeeProjectId(newProjectId);
+                  if (userId) {
+                    setSavingProjectUpdate(true);
+                    setError('');
+                    apiClient.updateEmployeeProfile(userId, { currentProjectId: newProjectId || null })
+                      .then((response: any) => {
+                        if (response?.success) {
+                          setSuccess('Current project updated.');
+                          loadEmployeeProfile();
+                        } else {
+                          setError(response?.error || 'Failed to update project');
+                          setEmployeeProjectId(employeeProjectId);
+                        }
+                      })
+                      .catch((err: any) => {
+                        setError(err.response?.data?.error || 'Failed to update project');
+                        setEmployeeProjectId(employeeProjectId);
+                      })
+                      .finally(() => setSavingProjectUpdate(false));
+                  }
+                }}
+                className={styles.input}
+                disabled={savingProjectUpdate || loadingProjects}
+              >
+                <option value="">No project assigned</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name} - {project.jobNumber}
+                  </option>
+                ))}
+              </select>
+              {savingProjectUpdate && <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', color: '#666' }}>Updating...</span>}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Employee Profile - hidden from PROJECT_MANAGER when viewing another user */}
+        {userRole !== 'PROJECT_MANAGER' && (
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Employee Profile</h2>
           {!employeeProfile && !isEditing && (
             <p style={{ marginBottom: '1rem', color: '#666', fontStyle: 'italic' }}>
-              No employee profile exists for this user.{isAdmin && ' Click "Edit User" to create one.'}
+              No employee profile exists for this user.{canManageUser && ' Click "Edit User" to create one.'}
             </p>
           )}
-          <div className={styles.grid}>
+          <div className={styles.fields}>
             <div className={styles.field}>
               <label>Title{isEditing && ' *'}</label>
               {isEditing ? (
@@ -1509,7 +1626,7 @@ export default function UserDetailPage() {
                   maxLength={100}
                 />
               ) : (
-                <div className={styles.value}>
+                <div className={styles.fieldValue}>
                   {employeeProfile?.title || 'N/A'}
                 </div>
               )}
@@ -1535,7 +1652,7 @@ export default function UserDetailPage() {
                   <option value="SALARY">SALARY</option>
                 </select>
               ) : (
-                <div className={styles.value}>
+                <div className={styles.fieldValue}>
                   {employeeProfile?.paymentType || 'N/A'}
                 </div>
               )}
@@ -1577,14 +1694,14 @@ export default function UserDetailPage() {
                 {employeeProfile?.paymentType === 'HOURLY' && employeeProfile.hourlyRate ? (
                   <div className={styles.field}>
                     <label>Hourly Rate</label>
-                    <div className={styles.value}>
+                    <div className={styles.fieldValue}>
                       ${employeeProfile.hourlyRate.toFixed(2)}/hour
                     </div>
                   </div>
                 ) : employeeProfile?.salaryAmount ? (
                   <div className={styles.field}>
                     <label>Salary Amount</label>
-                    <div className={styles.value}>
+                    <div className={styles.fieldValue}>
                       ${employeeProfile.salaryAmount.toFixed(2)}/period
                     </div>
                   </div>
@@ -1611,7 +1728,7 @@ export default function UserDetailPage() {
                   disabled={saving}
                 />
               ) : (
-                <div className={styles.value}>
+                <div className={styles.fieldValue}>
                   {employeeProfile?.ptoCredit !== undefined && employeeProfile.ptoCredit !== null 
                     ? `${Number(employeeProfile.ptoCredit).toFixed(2)} hours` 
                     : 'N/A'}
@@ -1642,7 +1759,7 @@ export default function UserDetailPage() {
                   disabled={saving}
                 />
               ) : (
-                <div className={styles.value}>
+                <div className={styles.fieldValue}>
                   {employeeProfile?.weeklyPtoRate !== undefined && employeeProfile.weeklyPtoRate !== null 
                     ? `${Number(employeeProfile.weeklyPtoRate).toFixed(2)} hours/week` 
                     : 'N/A'}
@@ -1661,7 +1778,7 @@ export default function UserDetailPage() {
                   disabled={saving}
                 />
               ) : (
-                <div className={styles.value}>
+                <div className={styles.fieldValue}>
                   {employeeProfile?.employmentStartDate 
                     ? new Date(employeeProfile.employmentStartDate).toLocaleDateString()
                     : 'N/A'}
@@ -1689,7 +1806,7 @@ export default function UserDetailPage() {
                   disabled={saving}
                 />
               ) : (
-                <div className={styles.value}>
+                <div className={styles.fieldValue}>
                   {employeeProfile?.sickDaysLeft !== undefined && employeeProfile.sickDaysLeft !== null 
                     ? employeeProfile.sickDaysLeft 
                     : 'N/A'}
@@ -1717,7 +1834,7 @@ export default function UserDetailPage() {
                   )}
                 </select>
               ) : (
-                <div className={styles.value}>
+                <div className={styles.fieldValue}>
                   {employeeProfile?.currentProject 
                     ? `${employeeProfile.currentProject.name} - ${employeeProfile.currentProject.jobNumber}`
                     : 'No project assigned'}
@@ -1726,109 +1843,33 @@ export default function UserDetailPage() {
             </div>
           </div>
         </div>
+        )}
 
+        {canManageUser && (
+        <>
         {/* Account Information */}
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>Account Information</h2>
-          <div className={styles.grid}>
+          <div className={styles.fields}>
             <div className={styles.field}>
               <label>Account Created</label>
-              <div className={styles.value}>
+              <div className={styles.fieldValue}>
                 {new Date(user.createdAt).toLocaleString()}
               </div>
             </div>
             <div className={styles.field}>
               <label>Last Updated</label>
-              <div className={styles.value}>
+              <div className={styles.fieldValue}>
                 {new Date(user.updatedAt).toLocaleString()}
               </div>
             </div>
           </div>
         </div>
-
-        {isEditing && isAdmin && (
-          <div className={styles.formActions}>
-            <button
-              type="button"
-              onClick={async () => {
-                setIsEditing(false);
-                setError('');
-                setSuccess('');
-                // Reset form data to original user data
-                if (user) {
-                  setFormData({
-                    firstName: user.firstName || '',
-                    middleName: user.middleName || '',
-                    lastName: user.lastName || '',
-                    email: user.email || '',
-                    phone: user.phone || '',
-                    address1: user.address1 || '',
-                    address2: user.address2 || '',
-                    city: user.city || '',
-                    state: user.state || '',
-                    zipCode: user.zipCode || '',
-                    ssn: user.ssn || '',
-                    emergencyContact: user.emergencyContacts?.[0] ? {
-                      firstName: user.emergencyContacts[0].firstName || '',
-                      lastName: user.emergencyContacts[0].lastName || '',
-                      phone: user.emergencyContacts[0].phone || '',
-                      email: user.emergencyContacts[0].email || '',
-                      relationship: user.emergencyContacts[0].relationship || '',
-                    } : {
-                      firstName: '',
-                      lastName: '',
-                      phone: '',
-                      email: '',
-                      relationship: '',
-                    },
-                    pantsSize: user.pantsSize || '',
-                    shirtSize: user.shirtSize || '',
-                    glovesSize: user.glovesSize || '',
-                    vestSize: user.vestSize || '',
-                    jacketSize: user.jacketSize || '',
-                  });
-                }
-                // Reset employee profile fields
-                await loadEmployeeProfile();
-                if (employeeProfile) {
-                  setEmployeePaymentType(employeeProfile.paymentType);
-                  setEmployeeHourlyRate(employeeProfile.hourlyRate?.toString() || '');
-                  setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
-                  setEmployeeProjectId(employeeProfile.currentProject?.id || '');
-                  setEmployeePtoCredit(employeeProfile.ptoCredit?.toString() || '0');
-                  setEmployeeWeeklyPtoRate(employeeProfile.weeklyPtoRate?.toString() || '1.6');
-                  setEmployeeEmploymentStartDate(employeeProfile.employmentStartDate || new Date().toISOString().split('T')[0]);
-                  setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '5');
-                } else {
-                  setEmployeePaymentType('HOURLY');
-                  setEmployeeHourlyRate('');
-                  setEmployeeSalaryAmount('');
-                  setEmployeeProjectId('');
-                  setEmployeePtoCredit('0');
-                  setEmployeeWeeklyPtoRate('1.6');
-                  const today = new Date().toISOString().split('T')[0];
-                  setEmployeeEmploymentStartDate(today);
-                  setEmployeeSickDaysLeft('5');
-                }
-              }}
-              className={styles.cancelButton}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className={styles.saveButton}
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
+        </>
         )}
-      </form>
 
-      {/* Certificates Section */}
-      <div className={styles.card}>
+      </div>
+
       {showDeleteModal && (
         <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -2138,25 +2179,16 @@ export default function UserDetailPage() {
         </div>
       )}
 
-      {/* Certificates Section */}
+      {canManageUser && (
       <div className={styles.card}>
-        <div className={styles.section}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 className={styles.sectionTitle}>Certificates</h2>
-            <button
-            type="button"
-            onClick={() => setShowCertUploadForm(!showCertUploadForm)}
-            className={styles.createEmployeeButton}
-            style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
-          >
-            {showCertUploadForm ? 'Cancel' : '+ Add Certificate'}
-            </button>
-          </div>
+      {/* Certificates Section - same style as profile */}
+        <div className={profileSectionStyles.section}>
+          <h2 className={profileSectionStyles.sectionTitle}>Certificates</h2>
 
           {showCertUploadForm && (
-          <form onSubmit={handleUploadCertificate} style={{ padding: '1rem', background: '#f9f9f9', borderRadius: '4px', marginBottom: '1.5rem' }} noValidate>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="adminCertName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Certificate Name *</label>
+          <div className={docStyles.uploadForm}>
+            <div className={docStyles.field}>
+              <label htmlFor="adminCertName">Certificate Name *</label>
               <input
                 id="adminCertName"
                 type="text"
@@ -2165,12 +2197,11 @@ export default function UserDetailPage() {
                 required
                 disabled={uploadingCert}
                 placeholder="e.g., OSHA 30-Hour, First Aid CPR"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
               />
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="adminCertFile" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Certificate File *</label>
+            <div className={docStyles.field}>
+              <label htmlFor="adminCertFile">Certificate File *</label>
               <input
                 id="adminCertFile"
                 type="file"
@@ -2178,15 +2209,14 @@ export default function UserDetailPage() {
                 onChange={handleCertFileChange}
                 required
                 disabled={uploadingCert}
-                style={{ width: '100%', padding: '0.25rem' }}
               />
               {certFormData.file && (
-                <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666', fontStyle: 'italic' }}>Selected: {certFormData.file.name}</p>
+                <p className={docStyles.fileName}>Selected: {certFormData.file.name}</p>
               )}
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <div className={docStyles.field}>
+              <label className={docStyles.checkboxLabel}>
                 <input
                   type="checkbox"
                   checked={certFormData.doesNotExpire}
@@ -2198,8 +2228,8 @@ export default function UserDetailPage() {
             </div>
 
             {!certFormData.doesNotExpire && (
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="adminCertExpiration" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Expiration Date *</label>
+              <div className={docStyles.field}>
+                <label htmlFor="adminCertExpiration">Expiration Date *</label>
                 <input
                   id="adminCertExpiration"
                   type="date"
@@ -2207,12 +2237,11 @@ export default function UserDetailPage() {
                   onChange={(e) => setCertFormData({ ...certFormData, expirationDate: e.target.value })}
                   required={!certFormData.doesNotExpire}
                   disabled={uploadingCert || certFormData.doesNotExpire}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
                 />
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <div className={docStyles.formActions}>
               <button
                 type="button"
                 onClick={() => {
@@ -2220,47 +2249,49 @@ export default function UserDetailPage() {
                   setCertFormData({ name: '', file: null, expirationDate: '', doesNotExpire: false });
                   setError('');
                 }}
-                className={styles.cancelButton}
+                className={docStyles.cancelButton}
                 disabled={uploadingCert}
-                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
               >
                 Cancel
               </button>
               <button
-                type="submit"
-                className={styles.saveButton}
+                type="button"
+                className={docStyles.submitButton}
                 disabled={uploadingCert}
-                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleUploadCertificate(e as any);
+                }}
               >
                 {uploadingCert ? 'Uploading...' : 'Upload Certificate'}
               </button>
             </div>
-          </form>
+          </div>
         )}
         {loadingDocuments ? (
           <p>Loading certificates...</p>
         ) : certificates.length === 0 ? (
-          <p className={styles.emptyMessage}>No certificates uploaded.</p>
+          <p className={docStyles.emptyMessage}>No certificates uploaded yet.</p>
         ) : (
-          <div className={styles.documentList}>
+          <div className={docStyles.documentList}>
             {certificates.map((cert) => {
               const isExpired = cert.expirationDate && new Date(cert.expirationDate) < new Date();
               const isExpiringSoon = cert.expirationDate && !isExpired && 
                 Math.ceil((new Date(cert.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 30;
               
               return (
-                <div key={cert.id} className={styles.documentItem}>
-                  <div className={styles.documentInfo}>
-                    <h3 className={styles.documentName}>{cert.name}</h3>
-                    <p className={styles.documentFileName}>{cert.fileName}</p>
-                    <div className={styles.documentMeta}>
+                <div key={cert.id} className={docStyles.documentItem}>
+                  <div className={docStyles.documentInfo}>
+                    <h3 className={docStyles.documentName}>{cert.name}</h3>
+                    <p className={docStyles.documentFileName}>{cert.fileName}</p>
+                    <div className={docStyles.documentMeta}>
                       {cert.doesNotExpire ? (
-                        <span className={styles.noExpiration}>No expiration</span>
+                        <span className={docStyles.noExpiration}>No expiration</span>
                       ) : (
                         <span
-                          className={`${styles.expirationDate} ${
-                            isExpired ? styles.expired : ''
-                          } ${isExpiringSoon ? styles.expiringSoon : ''}`}
+                          className={`${docStyles.expirationDate} ${
+                            isExpired ? docStyles.expired : ''
+                          } ${isExpiringSoon ? docStyles.expiringSoon : ''}`}
                         >
                           Expires: {new Date(cert.expirationDate).toLocaleDateString()}
                           {isExpired && ' (Expired)'}
@@ -2269,13 +2300,13 @@ export default function UserDetailPage() {
                       )}
                     </div>
                   </div>
-                  <div className={styles.documentActions}>
+                  <div className={docStyles.documentActions}>
                     {cert.fileUrl && (
                       <a
                         href={cert.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={styles.viewButton}
+                        className={docStyles.viewButton}
                       >
                         View
                       </a>
@@ -2283,7 +2314,7 @@ export default function UserDetailPage() {
                     <button
                       type="button"
                       onClick={() => handleDeleteDocumentClick(cert.id, cert.name, 'CERTIFICATE')}
-                      className={styles.documentDeleteButton}
+                      className={docStyles.deleteButton}
                     >
                       Delete
                     </button>
@@ -2293,28 +2324,26 @@ export default function UserDetailPage() {
             })}
           </div>
         )}
-        </div>
-      </div>
 
-      {/* Personal Documents Section */}
-      <div className={styles.card}>
-        <div className={styles.section}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 className={styles.sectionTitle}>Personal Documents</h2>
-            <button
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
             type="button"
-            onClick={() => setShowDocUploadForm(!showDocUploadForm)}
-            className={styles.createEmployeeButton}
-            style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+            onClick={() => setShowCertUploadForm(!showCertUploadForm)}
+            className={docStyles.addButton}
           >
-            {showDocUploadForm ? 'Cancel' : '+ Add Document'}
-            </button>
-          </div>
+            {showCertUploadForm ? 'Cancel' : '+ Add Certificate'}
+          </button>
+        </div>
+        </div>
+
+      {/* Personal Documents Section - same style as profile */}
+        <div className={profileSectionStyles.section}>
+          <h2 className={profileSectionStyles.sectionTitle}>Personal Documents</h2>
 
           {showDocUploadForm && (
-          <form onSubmit={handleUploadDocument} style={{ padding: '1rem', background: '#f9f9f9', borderRadius: '4px', marginBottom: '1.5rem' }} noValidate>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="adminDocName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Document Name *</label>
+          <div className={docStyles.uploadForm}>
+            <div className={docStyles.field}>
+              <label htmlFor="adminDocName">Document Name *</label>
               <input
                 id="adminDocName"
                 type="text"
@@ -2323,12 +2352,11 @@ export default function UserDetailPage() {
                 required
                 disabled={uploadingDoc}
                 placeholder="e.g., SSN Card, Driver License"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
               />
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="adminDocFile" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Document File *</label>
+            <div className={docStyles.field}>
+              <label htmlFor="adminDocFile">Document File *</label>
               <input
                 id="adminDocFile"
                 type="file"
@@ -2336,14 +2364,13 @@ export default function UserDetailPage() {
                 onChange={handleDocFileChange}
                 required
                 disabled={uploadingDoc}
-                style={{ width: '100%', padding: '0.25rem' }}
               />
               {docFormData.file && (
-                <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666', fontStyle: 'italic' }}>Selected: {docFormData.file.name}</p>
+                <p className={docStyles.fileName}>Selected: {docFormData.file.name}</p>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <div className={docStyles.formActions}>
               <button
                 type="button"
                 onClick={() => {
@@ -2351,45 +2378,47 @@ export default function UserDetailPage() {
                   setDocFormData({ name: '', file: null });
                   setError('');
                 }}
-                className={styles.cancelButton}
+                className={docStyles.cancelButton}
                 disabled={uploadingDoc}
-                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
               >
                 Cancel
               </button>
               <button
-                type="submit"
-                className={styles.saveButton}
+                type="button"
+                className={docStyles.submitButton}
                 disabled={uploadingDoc}
-                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleUploadDocument(e as any);
+                }}
               >
                 {uploadingDoc ? 'Uploading...' : 'Upload Document'}
               </button>
             </div>
-          </form>
+          </div>
         )}
         {loadingDocuments ? (
           <p>Loading documents...</p>
         ) : personalDocuments.length === 0 ? (
-          <p className={styles.emptyMessage}>No personal documents uploaded.</p>
+          <p className={docStyles.emptyMessage}>No documents uploaded yet.</p>
         ) : (
-          <div className={styles.documentList}>
+          <div className={docStyles.documentList}>
             {personalDocuments.map((doc) => (
-              <div key={doc.id} className={styles.documentItem}>
-                <div className={styles.documentInfo}>
-                  <h3 className={styles.documentName}>{doc.name}</h3>
-                  <p className={styles.documentFileName}>{doc.fileName}</p>
-                  <p className={styles.documentMeta}>
+              <div key={doc.id} className={docStyles.documentItem}>
+                <div className={docStyles.documentInfo}>
+                  <h3 className={docStyles.documentName}>{doc.name}</h3>
+                  <p className={docStyles.documentFileName}>{doc.fileName}</p>
+                  <p className={docStyles.documentMeta}>
                     Uploaded: {new Date(doc.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className={styles.documentActions}>
+                <div className={docStyles.documentActions}>
                   {doc.fileUrl && (
                     <a
                       href={doc.fileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={styles.viewButton}
+                      className={docStyles.viewButton}
                     >
                       View
                     </a>
@@ -2397,7 +2426,7 @@ export default function UserDetailPage() {
                   <button
                     type="button"
                     onClick={() => handleDeleteDocumentClick(doc.id, doc.name, 'PERSONAL_DOCUMENT')}
-                    className={styles.documentDeleteButton}
+                    className={docStyles.deleteButton}
                   >
                     Delete
                   </button>
@@ -2406,8 +2435,100 @@ export default function UserDetailPage() {
             ))}
           </div>
         )}
+
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setShowDocUploadForm(!showDocUploadForm)}
+            className={docStyles.addButton}
+          >
+            {showDocUploadForm ? 'Cancel' : '+ Add Document'}
+          </button>
         </div>
+        </div>
+
+        {/* Save/Cancel inside this card so they appear in the white form area */}
+        {isEditing && canManageUser && (
+          <div className={styles.formActions} style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #eee' }}>
+          <button
+            type="button"
+            onClick={async () => {
+              setIsEditing(false);
+              setError('');
+              setSuccess('');
+              if (user) {
+                setFormData({
+                  firstName: user.firstName || '',
+                  middleName: user.middleName || '',
+                  lastName: user.lastName || '',
+                  email: user.email || '',
+                  phone: user.phone || '',
+                  address1: user.address1 || '',
+                  address2: user.address2 || '',
+                  city: user.city || '',
+                  state: user.state || '',
+                  zipCode: user.zipCode || '',
+                  ssn: user.ssn || '',
+                  emergencyContact: user.emergencyContacts?.[0] ? {
+                    firstName: user.emergencyContacts[0].firstName || '',
+                    lastName: user.emergencyContacts[0].lastName || '',
+                    phone: user.emergencyContacts[0].phone || '',
+                    email: user.emergencyContacts[0].email || '',
+                    relationship: user.emergencyContacts[0].relationship || '',
+                  } : {
+                    firstName: '',
+                    lastName: '',
+                    phone: '',
+                    email: '',
+                    relationship: '',
+                  },
+                  pantsSize: user.pantsSize || '',
+                  shirtSize: user.shirtSize || '',
+                  glovesSize: user.glovesSize || '',
+                  vestSize: user.vestSize || '',
+                  jacketSize: user.jacketSize || '',
+                });
+              }
+              await loadEmployeeProfile();
+              if (employeeProfile) {
+                setEmployeePaymentType(employeeProfile.paymentType);
+                setEmployeeHourlyRate(employeeProfile.hourlyRate?.toString() || '');
+                setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
+                setEmployeeProjectId(employeeProfile.currentProject?.id || '');
+                setEmployeePtoCredit(employeeProfile.ptoCredit?.toString() || '0');
+                setEmployeeWeeklyPtoRate(employeeProfile.weeklyPtoRate?.toString() || '1.6');
+                setEmployeeEmploymentStartDate(employeeProfile.employmentStartDate || new Date().toISOString().split('T')[0]);
+                setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '5');
+              } else {
+                setEmployeePaymentType('HOURLY');
+                setEmployeeHourlyRate('');
+                setEmployeeSalaryAmount('');
+                setEmployeeProjectId('');
+                setEmployeePtoCredit('0');
+                setEmployeeWeeklyPtoRate('1.6');
+                const today = new Date().toISOString().split('T')[0];
+                setEmployeeEmploymentStartDate(today);
+                setEmployeeSickDaysLeft('5');
+              }
+            }}
+            className={styles.cancelButton}
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className={styles.saveButton}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          </div>
+        )}
       </div>
+      )}
+
+      </form>
 
       {/* Delete Document Confirmation Modal */}
       {showDeleteDocumentModal && documentToDelete && (
@@ -2453,7 +2574,7 @@ export default function UserDetailPage() {
           </div>
         </div>
         )}
-    </div>
+
     </div>
   );
 }

@@ -55,6 +55,9 @@ export default function AdminProfilePage() {
   const [updatingProject, setUpdatingProject] = useState(false);
   const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
   const [employeeTitle, setEmployeeTitle] = useState<string | null>(null);
+  const [employeePaymentType, setEmployeePaymentType] = useState<'HOURLY' | 'SALARY' | null>(null);
+  const [employeeHourlyRate, setEmployeeHourlyRate] = useState<number | null>(null);
+  const [employeeSalaryAmount, setEmployeeSalaryAmount] = useState<number | null>(null);
   const [ptoCredit, setPtoCredit] = useState<number | null>(null);
   const [weeklyPtoRate, setWeeklyPtoRate] = useState<number | null>(null);
   const [sickDaysLeft, setSickDaysLeft] = useState<number | null>(null);
@@ -62,8 +65,6 @@ export default function AdminProfilePage() {
   const [originalFormData, setOriginalFormData] = useState(formData);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('');
-  const [emailVerified, setEmailVerified] = useState<boolean>(false);
-  const [isActive, setIsActive] = useState<boolean>(true);
   const [createdAt, setCreatedAt] = useState<string>('');
   const [updatedAt, setUpdatedAt] = useState<string>('');
   const [updatingRole, setUpdatingRole] = useState(false);
@@ -101,8 +102,6 @@ export default function AdminProfilePage() {
         const user = response.data.user;
         setCurrentUserId(user.id);
         setUserRole(user.role || '');
-        setEmailVerified(user.emailVerified || false);
-        setIsActive(user.isActive !== undefined ? user.isActive : true);
         setCreatedAt(user.createdAt || '');
         setUpdatedAt(user.updatedAt || '');
         const loadedData = {
@@ -144,6 +143,9 @@ export default function AdminProfilePage() {
         if (user.employee) {
           setHasEmployeeProfile(true);
           setEmployeeTitle(user.employee.title || null);
+          setEmployeePaymentType(user.employee.paymentType || null);
+          setEmployeeHourlyRate(user.employee.hourlyRate != null ? parseFloat(String(user.employee.hourlyRate)) : null);
+          setEmployeeSalaryAmount(user.employee.salaryAmount != null ? parseFloat(String(user.employee.salaryAmount)) : null);
           setPtoCredit(user.employee.ptoCredit ?? null);
           setWeeklyPtoRate(user.employee.weeklyPtoRate ?? null);
           setSickDaysLeft(user.employee.sickDaysLeft ?? null);
@@ -163,6 +165,9 @@ export default function AdminProfilePage() {
         } else {
           setHasEmployeeProfile(false);
           setEmployeeTitle(null);
+          setEmployeePaymentType(null);
+          setEmployeeHourlyRate(null);
+          setEmployeeSalaryAmount(null);
           setCurrentProjectId('');
           setCurrentProjectName('');
           setPtoCredit(null);
@@ -445,7 +450,7 @@ export default function AdminProfilePage() {
         {success && <div className={styles.success}>{success}</div>}
         {error && <div className={styles.error}>{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form id="admin-profile-form" onSubmit={handleSubmit}>
           {/* Personal Information Section */}
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Personal Information</h2>
@@ -498,11 +503,6 @@ export default function AdminProfilePage() {
                 ) : (
                   <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
                 )}
-              </div>
-
-              <div className={styles.field}>
-                <label>Role</label>
-                <div className={styles.fieldValue}>{userRole || 'N/A'}</div>
               </div>
 
               <div className={styles.field}>
@@ -883,6 +883,16 @@ export default function AdminProfilePage() {
                 <div className={styles.fieldValue}>{employeeTitle || 'N/A'}</div>
               </div>
               <div className={styles.field}>
+                <label>Pay Rate</label>
+                <div className={styles.fieldValue}>
+                  {employeePaymentType === 'HOURLY' && employeeHourlyRate != null
+                    ? `$${employeeHourlyRate.toFixed(2)}/hour`
+                    : employeePaymentType === 'SALARY' && employeeSalaryAmount != null
+                      ? `$${employeeSalaryAmount.toLocaleString()}/year`
+                      : 'N/A'}
+                </div>
+              </div>
+              <div className={styles.field}>
                 <label htmlFor="currentProject">Current Project</label>
                 {hasEmployeeProfile ? (
                   <>
@@ -985,28 +995,6 @@ export default function AdminProfilePage() {
               </div>
 
               <div className={styles.field}>
-                <label>Email Verified</label>
-                <div className={styles.fieldValue}>
-                  {emailVerified ? (
-                    <span className={styles.verified}>✓ Verified</span>
-                  ) : (
-                    <span className={styles.unverified}>✗ Not Verified</span>
-                  )}
-                </div>
-              </div>
-
-              <div className={styles.field}>
-                <label>Account Status</label>
-                <div className={styles.fieldValue}>
-                  {isActive ? (
-                    <span className={styles.activeStatus}>Active</span>
-                  ) : (
-                    <span className={styles.inactiveStatus}>Deactivated</span>
-                  )}
-                </div>
-              </div>
-
-              <div className={styles.field}>
                 <label>Account Created</label>
                 <div className={styles.fieldValue}>
                   {createdAt ? new Date(createdAt).toLocaleString() : 'N/A'}
@@ -1021,31 +1009,33 @@ export default function AdminProfilePage() {
               </div>
             </div>
           </div>
-
-          {isEditing && (
-            <div className={styles.actions}>
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className={styles.cancelButton}
-                disabled={loading || changingPassword}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className={styles.submitButton}
-                disabled={loading || changingPassword}
-              >
-                {loading ? 'Updating...' : 'Update Profile'}
-              </button>
-            </div>
-          )}
         </form>
 
         <CertificatesSection />
 
         <DocumentsSection />
+
+        {/* Save/Cancel at bottom when editing */}
+        {isEditing && (
+          <div className={styles.actions}>
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className={styles.cancelButton}
+              disabled={loading || changingPassword}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="admin-profile-form"
+              className={styles.submitButton}
+              disabled={loading || changingPassword}
+            >
+              {loading ? 'Updating...' : 'Update Profile'}
+            </button>
+          </div>
+        )}
 
         {/* Change Password Modal */}
         {isEditingPassword && (

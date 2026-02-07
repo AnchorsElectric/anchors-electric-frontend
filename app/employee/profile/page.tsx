@@ -26,6 +26,8 @@ export default function EditProfilePage() {
     city: '',
     state: '',
     zipCode: '',
+    ssn: '',
+    dateOfBirth: '',
     emergencyContact: {
       firstName: '',
       lastName: '',
@@ -53,12 +55,17 @@ export default function EditProfilePage() {
   const [updatingProject, setUpdatingProject] = useState(false);
   const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
   const [employeeTitle, setEmployeeTitle] = useState<string | null>(null);
+  const [employeePaymentType, setEmployeePaymentType] = useState<'HOURLY' | 'SALARY' | null>(null);
+  const [employeeHourlyRate, setEmployeeHourlyRate] = useState<number | null>(null);
+  const [employeeSalaryAmount, setEmployeeSalaryAmount] = useState<number | null>(null);
   const [ptoCredit, setPtoCredit] = useState<number | null>(null);
   const [weeklyPtoRate, setWeeklyPtoRate] = useState<number | null>(null);
   const [sickDaysLeft, setSickDaysLeft] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [originalFormData, setOriginalFormData] = useState(formData);
   const [userRole, setUserRole] = useState<string>('');
+  const [createdAt, setCreatedAt] = useState<string>('');
+  const [updatedAt, setUpdatedAt] = useState<string>('');
 
   useEffect(() => {
     const token = getAuthToken();
@@ -92,6 +99,8 @@ export default function EditProfilePage() {
       if (response.success && response.data?.user) {
         const user = response.data.user;
         setUserRole(user.role || '');
+        setCreatedAt(user.createdAt || '');
+        setUpdatedAt(user.updatedAt || '');
         const loadedData = {
           firstName: user.firstName || '',
           middleName: user.middleName || '',
@@ -103,6 +112,8 @@ export default function EditProfilePage() {
           city: user.city || '',
           state: user.state || '',
           zipCode: user.zipCode || '',
+          ssn: user.ssn || '',
+          dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
           emergencyContact: user.emergencyContacts?.[0] ? {
             firstName: user.emergencyContacts[0].firstName || '',
             lastName: user.emergencyContacts[0].lastName || '',
@@ -129,6 +140,9 @@ export default function EditProfilePage() {
         if (user.employee) {
           setHasEmployeeProfile(true);
           setEmployeeTitle(user.employee.title || null);
+          setEmployeePaymentType(user.employee.paymentType || null);
+          setEmployeeHourlyRate(user.employee.hourlyRate != null ? parseFloat(String(user.employee.hourlyRate)) : null);
+          setEmployeeSalaryAmount(user.employee.salaryAmount != null ? parseFloat(String(user.employee.salaryAmount)) : null);
           if (user.employee.currentProjectId) {
             setCurrentProjectId(user.employee.currentProjectId);
             if (user.employee.currentProject && user.employee.currentProject.jobNumber) {
@@ -148,6 +162,9 @@ export default function EditProfilePage() {
         } else {
           setHasEmployeeProfile(false);
           setEmployeeTitle(null);
+          setEmployeePaymentType(null);
+          setEmployeeHourlyRate(null);
+          setEmployeeSalaryAmount(null);
           setCurrentProjectId('');
           setCurrentProjectName('');
           setPtoCredit(null);
@@ -424,7 +441,7 @@ export default function EditProfilePage() {
         {success && <div className={styles.success}>{success}</div>}
         {error && <div className={styles.error}>{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form id="employee-profile-form" onSubmit={handleSubmit}>
           {/* Personal Information Section */}
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Personal Information</h2>
@@ -445,8 +462,15 @@ export default function EditProfilePage() {
               </div>
 
               <div className={styles.field}>
-                <label>Role</label>
-                <div className={styles.fieldValue}>{userRole || 'N/A'}</div>
+                <label>SSN</label>
+                <div className={styles.fieldValue}>{formData.ssn || 'N/A'}</div>
+              </div>
+
+              <div className={styles.field}>
+                <label>Date of Birth</label>
+                <div className={styles.fieldValue}>
+                  {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}
+                </div>
               </div>
             </div>
           </div>
@@ -776,6 +800,16 @@ export default function EditProfilePage() {
                 <div className={styles.fieldValue}>{employeeTitle || 'N/A'}</div>
               </div>
               <div className={styles.field}>
+                <label>Pay Rate</label>
+                <div className={styles.fieldValue}>
+                  {employeePaymentType === 'HOURLY' && employeeHourlyRate != null
+                    ? `$${employeeHourlyRate.toFixed(2)}/hour`
+                    : employeePaymentType === 'SALARY' && employeeSalaryAmount != null
+                      ? `$${employeeSalaryAmount.toLocaleString()}/year`
+                      : 'N/A'}
+                </div>
+              </div>
+              <div className={styles.field}>
                 <label htmlFor="currentProject">Current Project</label>
                 {hasEmployeeProfile ? (
                   <>
@@ -830,25 +864,28 @@ export default function EditProfilePage() {
             </div>
           </div>
 
-          {isEditing && (
-            <div className={styles.actions}>
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className={styles.cancelButton}
-                disabled={loading || changingPassword}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className={styles.submitButton}
-                disabled={loading || changingPassword}
-              >
-                {loading ? 'Updating...' : 'Update Profile'}
-              </button>
+          {/* Account Information Section */}
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Account Information</h2>
+            <div className={styles.fields}>
+              <div className={styles.field}>
+                <label>Role</label>
+                <div className={styles.fieldValue}>{userRole || 'N/A'}</div>
+              </div>
+              <div className={styles.field}>
+                <label>Account Created</label>
+                <div className={styles.fieldValue}>
+                  {createdAt ? new Date(createdAt).toLocaleString() : 'N/A'}
+                </div>
+              </div>
+              <div className={styles.field}>
+                <label>Last Updated</label>
+                <div className={styles.fieldValue}>
+                  {updatedAt ? new Date(updatedAt).toLocaleString() : 'N/A'}
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </form>
 
         {/* Certificates Section */}
@@ -856,6 +893,28 @@ export default function EditProfilePage() {
 
         {/* Personal Documents Section */}
         <DocumentsSection />
+
+        {/* Save/Cancel at bottom when editing */}
+        {isEditing && (
+          <div className={styles.actions}>
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className={styles.cancelButton}
+              disabled={loading || changingPassword}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="employee-profile-form"
+              className={styles.submitButton}
+              disabled={loading || changingPassword}
+            >
+              {loading ? 'Updating...' : 'Update Profile'}
+            </button>
+          </div>
+        )}
 
         {/* Change Password Modal */}
         {isEditingPassword && (

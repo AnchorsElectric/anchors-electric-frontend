@@ -72,16 +72,18 @@ class ApiClient {
       (error: AxiosError<ApiResponse>) => {
         if (error.response?.status === 401) {
           const url = error.config?.url || '';
-          if (!url.includes('/projects') && 
-              !url.includes('/auth/login') && 
-              !url.includes('/auth/register') &&
-              !url.includes('/profile/change-password') &&
-              !url.includes('/documents')) {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('auth_token');
-              window.location.href = '/login';
-            }
+          const isExcluded = url.includes('/projects') ||
+            url.includes('/auth/login') ||
+            url.includes('/auth/register') ||
+            url.includes('/profile/change-password') ||
+            url.includes('/documents') ||
+            url.includes('/admin/pay-periods');
+          if (!isExcluded && typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            window.location.href = '/login';
           }
+        } else if (error.response?.status === 403 && typeof window !== 'undefined' && error.config?.method?.toLowerCase() === 'get') {
+          window.location.href = '/unauthorized';
         }
         return Promise.reject(error);
       }
@@ -261,13 +263,14 @@ class ApiClient {
     userId: string,
     data: {
       title?: string;
-      paymentType: 'HOURLY' | 'SALARY';
+      paymentType?: 'HOURLY' | 'SALARY';
       hourlyRate?: number;
       salaryAmount?: number;
       ptoCredit?: number;
       weeklyPtoRate?: number;
       employmentStartDate?: string;
       sickDaysLeft?: number;
+      currentProjectId?: string | null;
     }
   ) {
     const response = await this.client.put<ApiResponse>(`/admin/users/${userId}/employee`, data);

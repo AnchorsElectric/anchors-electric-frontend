@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
+import { UserRole } from '@/lib/config/routes';
 import styles from './pay-periods.module.scss';
 
 interface TimeEntry {
@@ -78,6 +79,10 @@ export default function AdminPayPeriodsPage() {
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [processing, setProcessing] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+  const canMarkAsPaid = userRole === 'ADMIN' || userRole === 'HR' || userRole === 'ACCOUNTANT';
+  const canApproveReject = userRole === 'ADMIN' || userRole === 'HR' || userRole === 'PROJECT_MANAGER';
 
   useEffect(() => {
     const token = getAuthToken();
@@ -86,14 +91,35 @@ export default function AdminPayPeriodsPage() {
       return;
     }
 
-    loadPayPeriods();
-  }, [router, statusFilter]);
+    let cancelled = false;
 
-  const loadPayPeriods = async () => {
+    const load = async () => {
+      try {
+        const profileRes = await apiClient.getProfile();
+        if (cancelled) return;
+        const role = profileRes.success && profileRes.data
+          ? ((profileRes.data as any).user?.role ?? null) as UserRole | null
+          : null;
+        setUserRole(role);
+        await loadPayPeriods(role);
+      } catch (e) {
+        if (cancelled) return;
+        const err = e as any;
+        setError(err.response?.data?.error || err.message || 'Failed to load');
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [router, statusFilter, userRole]);
+
+  const loadPayPeriods = async (roleOverride?: UserRole | null) => {
     try {
       setLoading(true);
       setError('');
-      const response = await apiClient.getSubmittedPayPeriods({ status: statusFilter });
+      const role = roleOverride ?? userRole;
+      const statusToFetch = statusFilter;
+      const response = await apiClient.getSubmittedPayPeriods({ status: statusToFetch });
       if (response.success && response.data) {
         const periodsData = (response.data as any).payPeriods || [];
         setPayPeriods(periodsData);
@@ -336,11 +362,21 @@ export default function AdminPayPeriodsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className={styles.filterSelect}
           >
-            <option value="SUBMITTED">Submitted</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="PAID">Paid</option>
-            <option value="ALL">All</option>
+            {userRole === 'ACCOUNTANT' ? (
+              <>
+                <option value="ALL">All</option>
+                <option value="APPROVED">Approved</option>
+                <option value="PAID">Paid</option>
+              </>
+            ) : (
+              <>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="PAID">Paid</option>
+                <option value="ALL">All</option>
+              </>
+            )}
           </select>
           <label htmlFor="employeeFilter">Employee:</label>
           <div className={styles.autocompleteWrapper}>
@@ -453,7 +489,7 @@ export default function AdminPayPeriodsPage() {
                     <span className={`${styles.status} ${getStatusColor(period.status)}`}>
                       {period.status}
                     </span>
-                    {period.status === 'SUBMITTED' && (
+                    {period.status === 'SUBMITTED' && canApproveReject && (
                       <div className={styles.actionButtons}>
                         <button
                           onClick={(e) => {
@@ -477,7 +513,7 @@ export default function AdminPayPeriodsPage() {
                         </button>
                       </div>
                     )}
-                    {period.status === 'APPROVED' && (
+                    {period.status === 'APPROVED' && canMarkAsPaid && (
                       <div className={styles.actionButtons}>
                         <button
                           onClick={(e) => {
