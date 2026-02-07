@@ -19,6 +19,9 @@ export default function DocumentsSection() {
   const [success, setSuccess] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     file: null as File | null,
@@ -48,8 +51,10 @@ export default function DocumentsSection() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    e.stopPropagation();
+    
     setError('');
     setSuccess('');
 
@@ -66,11 +71,20 @@ export default function DocumentsSection() {
     setUploading(true);
 
     try {
+      console.log('Starting upload...', {
+        fileName: formData.file.name,
+        fileSize: formData.file.size,
+        name: formData.name,
+        type: 'PERSONAL_DOCUMENT',
+      });
+
       const response = await apiClient.uploadDocument(formData.file, {
         name: formData.name.trim(),
         type: 'PERSONAL_DOCUMENT',
         doesNotExpire: true,
       });
+
+      console.log('Upload response:', response);
 
       if (response.success) {
         setSuccess('Document uploaded successfully!');
@@ -92,6 +106,12 @@ export default function DocumentsSection() {
       }
     } catch (err: any) {
       console.error('Upload error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        headers: err.response?.headers,
+      });
       const errorMessage = err.response?.data?.error || err.message || 'Failed to upload document';
       setError(errorMessage);
       // Keep error visible for 5 seconds
@@ -101,21 +121,34 @@ export default function DocumentsSection() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
+  const handleDeleteClick = (id: string, name: string) => {
+    setDocumentToDelete({ id, name });
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!documentToDelete) {
       return;
     }
 
+    setDeleting(true);
+    setError('');
+
     try {
-      const response = await apiClient.deleteDocument(id);
+      const response = await apiClient.deleteDocument(documentToDelete.id);
       if (response.success) {
         setSuccess('Document deleted successfully!');
+        setShowDeleteModal(false);
+        setDocumentToDelete(null);
         loadDocuments();
+        setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(response.error || 'Failed to delete document');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete document');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -136,7 +169,7 @@ export default function DocumentsSection() {
       {success && <div className={styles.success}>{success}</div>}
 
       {showUploadForm && (
-        <form onSubmit={handleSubmit} className={styles.uploadForm}>
+        <form onSubmit={handleSubmit} className={styles.uploadForm} noValidate>
           <div className={styles.field}>
             <label htmlFor="docName">Document Name *</label>
             <input
@@ -159,6 +192,7 @@ export default function DocumentsSection() {
               onChange={handleFileChange}
               required
               disabled={uploading}
+              key={showUploadForm ? 'file-input' : 'file-input-reset'}
             />
             {formData.file && (
               <p className={styles.fileName}>Selected: {formData.file.name}</p>
@@ -220,7 +254,7 @@ export default function DocumentsSection() {
                 )}
                 <button
                   type="button"
-                  onClick={() => handleDelete(doc.id)}
+                  onClick={() => handleDeleteClick(doc.id, doc.name)}
                   className={styles.deleteButton}
                 >
                   Delete
@@ -228,6 +262,51 @@ export default function DocumentsSection() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && documentToDelete && (
+        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Delete Document</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !deleting && setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Are you sure you want to delete <strong>{documentToDelete.name}</strong>?
+              </p>
+              <p className={styles.warning}>
+                This action cannot be undone. The document will be permanently deleted from the system.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDocumentToDelete(null);
+                }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.deleteButton}
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete Document'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

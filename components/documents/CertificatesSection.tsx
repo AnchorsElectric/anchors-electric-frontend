@@ -21,6 +21,9 @@ export default function CertificatesSection() {
   const [success, setSuccess] = useState('');
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [certificateToDelete, setCertificateToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     file: null as File | null,
@@ -52,7 +55,7 @@ export default function CertificatesSection() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -132,21 +135,34 @@ export default function CertificatesSection() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this certificate?')) {
+  const handleDeleteClick = (id: string, name: string) => {
+    setCertificateToDelete({ id, name });
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!certificateToDelete) {
       return;
     }
 
+    setDeleting(true);
+    setError('');
+
     try {
-      const response = await apiClient.deleteDocument(id);
+      const response = await apiClient.deleteDocument(certificateToDelete.id);
       if (response.success) {
         setSuccess('Certificate deleted successfully!');
+        setShowDeleteModal(false);
+        setCertificateToDelete(null);
         loadCertificates();
+        setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(response.error || 'Failed to delete certificate');
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete certificate');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -186,11 +202,9 @@ export default function CertificatesSection() {
 
       {showUploadForm && (
         <form 
-          onSubmit={handleSubmit} 
+          onSubmit={handleSubmit}
           className={styles.uploadForm}
           noValidate
-          action="#"
-          method="post"
         >
           <div className={styles.field}>
             <label htmlFor="certName">Certificate Name *</label>
@@ -269,11 +283,6 @@ export default function CertificatesSection() {
               type="submit"
               className={styles.submitButton}
               disabled={uploading}
-              onClick={(e) => {
-                // Additional safety - prevent any default behavior
-                e.preventDefault();
-                e.stopPropagation();
-              }}
             >
               {uploading ? 'Uploading...' : 'Upload Certificate'}
             </button>
@@ -321,7 +330,7 @@ export default function CertificatesSection() {
                 )}
                 <button
                   type="button"
-                  onClick={() => handleDelete(cert.id)}
+                  onClick={() => handleDeleteClick(cert.id, cert.name)}
                   className={styles.deleteButton}
                 >
                   Delete
@@ -329,6 +338,51 @@ export default function CertificatesSection() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && certificateToDelete && (
+        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Delete Certificate</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !deleting && setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Are you sure you want to delete <strong>{certificateToDelete.name}</strong>?
+              </p>
+              <p className={styles.warning}>
+                This action cannot be undone. The certificate will be permanently deleted from the system.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setCertificateToDelete(null);
+                }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.deleteButton}
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete Certificate'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

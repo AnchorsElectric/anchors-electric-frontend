@@ -1,8 +1,33 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-if (!API_URL) {
-  throw new Error('NEXT_PUBLIC_API_URL environment variable is required. Please set it in your .env file.');
+// Get API URL from environment variable, with fallback for local development
+// Ensure we have a valid URL and remove any trailing slashes
+function getApiUrl(): string {
+  let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  
+  // Ensure it's a string and not undefined/null
+  if (!url || typeof url !== 'string') {
+    url = 'http://localhost:3001';
+  }
+  
+  // Remove trailing slashes and whitespace
+  url = url.trim().replace(/\/+$/, '');
+  
+  // Validate it's a proper URL format
+  try {
+    new URL(url);
+  } catch (e) {
+    console.error('Invalid API_URL format, using fallback:', url);
+    url = 'http://localhost:3001';
+  }
+  
+  return url;
+}
+
+const API_URL = getApiUrl();
+
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  console.warn('NEXT_PUBLIC_API_URL environment variable is not set. Using fallback:', API_URL);
 }
 
 interface ApiResponse<T = any> {
@@ -16,8 +41,17 @@ class ApiClient {
   private client: AxiosInstance;
 
   constructor() {
+    // Ensure baseURL is always valid
+    const baseURL = `${API_URL}/api`;
+    
+    // Validate the baseURL before creating the client
+    if (!API_URL || !baseURL || baseURL.includes('undefined') || baseURL.includes('null')) {
+      console.error('Invalid API_URL detected:', API_URL, 'baseURL:', baseURL);
+      throw new Error(`Invalid API URL configuration: ${API_URL}`);
+    }
+    
     this.client = axios.create({
-      baseURL: `${API_URL}/api`,
+      baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -47,7 +81,8 @@ class ApiClient {
           if (!url.includes('/projects') && 
               !url.includes('/auth/login') && 
               !url.includes('/auth/register') &&
-              !url.includes('/profile/change-password')) {
+              !url.includes('/profile/change-password') &&
+              !url.includes('/documents')) {
             if (typeof window !== 'undefined') {
               localStorage.removeItem('auth_token');
               window.location.href = '/login';
@@ -189,7 +224,7 @@ class ApiClient {
     return response.data;
   }
 
-  async updateUserRole(userId: string, role: 'USER' | 'ADMIN') {
+  async updateUserRole(userId: string, role: 'USER' | 'ADMIN' | 'ACCOUNTANT' | 'HR' | 'PROJECT_MANAGER') {
     const response = await this.client.put<ApiResponse>(`/admin/users/${userId}/role`, {
       role,
     });
@@ -209,10 +244,13 @@ class ApiClient {
   async createEmployeeProfile(
     userId: string,
     data: {
+      title: string;
       paymentType: 'HOURLY' | 'SALARY';
       hourlyRate?: number;
       salaryAmount?: number;
-      ptoDaysLeft?: number;
+      ptoCredit?: number;
+      weeklyPtoRate: number;
+      employmentStartDate?: string;
       sickDaysLeft?: number;
     }
   ) {
@@ -228,10 +266,13 @@ class ApiClient {
   async updateEmployeeProfile(
     userId: string,
     data: {
+      title?: string;
       paymentType: 'HOURLY' | 'SALARY';
       hourlyRate?: number;
       salaryAmount?: number;
-      ptoDaysLeft?: number;
+      ptoCredit?: number;
+      weeklyPtoRate?: number;
+      employmentStartDate?: string;
       sickDaysLeft?: number;
     }
   ) {
@@ -447,6 +488,51 @@ class ApiClient {
 
   async deleteDocument(id: string) {
     const response = await this.client.delete<ApiResponse>(`/documents/${id}`);
+    return response.data;
+  }
+
+  // Admin methods for managing user documents
+  async getUserDocuments(userId: string, type?: 'CERTIFICATE' | 'PERSONAL_DOCUMENT') {
+    const params = type ? `?type=${type}` : '';
+    const response = await this.client.get<ApiResponse>(`/admin/users/${userId}/documents${params}`);
+    return response.data;
+  }
+
+  async uploadDocumentForUser(
+    userId: string,
+    file: File,
+    data: {
+      name: string;
+      type: 'CERTIFICATE' | 'PERSONAL_DOCUMENT';
+      expirationDate?: string | null;
+      doesNotExpire?: boolean;
+    }
+  ) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', data.name);
+    formData.append('type', data.type);
+    if (data.expirationDate) {
+      formData.append('expirationDate', data.expirationDate);
+    }
+    if (data.doesNotExpire !== undefined) {
+      formData.append('doesNotExpire', data.doesNotExpire.toString());
+    }
+
+    // Get auth token
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+
+    // Use axios directly to avoid default Content-Type header conflict
+    const response = await axios.post<ApiResponse>(
+      `${API_URL}/api/admin/users/${userId}/documents`,
+      formData,
+      {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        withCredentials: true,
+      }
+    );
     return response.data;
   }
 

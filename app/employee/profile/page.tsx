@@ -51,7 +51,9 @@ export default function EditProfilePage() {
   const [currentProjectName, setCurrentProjectName] = useState<string>('');
   const [updatingProject, setUpdatingProject] = useState(false);
   const [hasEmployeeProfile, setHasEmployeeProfile] = useState(false);
-  const [ptoDaysLeft, setPtoDaysLeft] = useState<number | null>(null);
+  const [employeeTitle, setEmployeeTitle] = useState<string | null>(null);
+  const [ptoCredit, setPtoCredit] = useState<number | null>(null);
+  const [weeklyPtoRate, setWeeklyPtoRate] = useState<number | null>(null);
   const [sickDaysLeft, setSickDaysLeft] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [originalFormData, setOriginalFormData] = useState(formData);
@@ -120,6 +122,7 @@ export default function EditProfilePage() {
         // Check if user has an employee profile
         if (user.employee) {
           setHasEmployeeProfile(true);
+          setEmployeeTitle(user.employee.title || null);
           if (user.employee.currentProjectId) {
             setCurrentProjectId(user.employee.currentProjectId);
             if (user.employee.currentProject && user.employee.currentProject.jobNumber) {
@@ -133,13 +136,16 @@ export default function EditProfilePage() {
             setCurrentProjectId('');
             setCurrentProjectName('');
           }
-          setPtoDaysLeft(user.employee.ptoDaysLeft ?? null);
+          setPtoCredit(user.employee.ptoCredit ?? null);
+          setWeeklyPtoRate(user.employee.weeklyPtoRate ?? null);
           setSickDaysLeft(user.employee.sickDaysLeft ?? null);
         } else {
           setHasEmployeeProfile(false);
+          setEmployeeTitle(null);
           setCurrentProjectId('');
           setCurrentProjectName('');
-          setPtoDaysLeft(null);
+          setPtoCredit(null);
+          setWeeklyPtoRate(null);
           setSickDaysLeft(null);
         }
       } else {
@@ -788,67 +794,66 @@ export default function EditProfilePage() {
 
           {/* Employee Information Section - Only show if user has employee profile */}
           {hasEmployeeProfile && (
-            <>
-              <div className={styles.section}>
-                <h2 className={styles.sectionTitle}>Employee Information</h2>
-                <div className={styles.fields}>
-                  {ptoDaysLeft !== null && (
-                    <div className={styles.field}>
-                      <label>PTO Days Left</label>
-                      <div className={styles.fieldValue}>{ptoDaysLeft}</div>
-                    </div>
-                  )}
-                  {sickDaysLeft !== null && (
-                    <div className={styles.field}>
-                      <label>Sick Days Left</label>
-                      <div className={styles.fieldValue}>{sickDaysLeft}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className={styles.section}>
-                <h2 className={styles.sectionTitle}>Current Project</h2>
-                <div className={styles.fields}>
+            <div className={styles.section}>
+              <h2 className={styles.sectionTitle}>Employee Information</h2>
+              <div className={styles.fields}>
+                {employeeTitle && (
                   <div className={styles.field}>
-                    <label htmlFor="currentProject">Current Project{isEditing && ' *'}</label>
-                    {isEditing ? (
-                      <>
-                        <select
-                          id="currentProject"
-                          value={currentProjectId}
-                          onChange={handleProjectChange}
-                          disabled={updatingProject || loading}
-                          className={styles.select}
-                          required
-                        >
-                          {projects.length === 0 ? (
-                            <option value="">No projects available</option>
-                          ) : (
-                            projects.map((project) => (
-                              <option key={project.id} value={project.id}>
-                                {project.name} - {project.jobNumber}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                        {updatingProject && <p className={styles.helpText}>Updating...</p>}
-                      </>
-                    ) : (
-                      <div className={styles.fieldValue}>
-                        {currentProjectName || 'No Project Assigned'}
-                      </div>
-                    )}
+                    <label>Title</label>
+                    <div className={styles.fieldValue}>{employeeTitle}</div>
                   </div>
+                )}
+                <div className={styles.field}>
+                  <label htmlFor="currentProject">Current Project{isEditing && ' *'}</label>
+                  {isEditing ? (
+                    <>
+                      <select
+                        id="currentProject"
+                        value={currentProjectId}
+                        onChange={handleProjectChange}
+                        disabled={updatingProject || loading}
+                        className={styles.select}
+                        required
+                      >
+                        {projects.length === 0 ? (
+                          <option value="">No projects available</option>
+                        ) : (
+                          projects.map((project) => (
+                            <option key={project.id} value={project.id}>
+                              {project.name} - {project.jobNumber}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      {updatingProject && <p className={styles.helpText}>Updating...</p>}
+                    </>
+                  ) : (
+                    <div className={styles.fieldValue}>
+                      {currentProjectName || 'No Project Assigned'}
+                    </div>
+                  )}
                 </div>
+                {ptoCredit !== null && (
+                  <div className={styles.field}>
+                    <label>PTO Credit</label>
+                    <div className={styles.fieldValue}>{ptoCredit.toFixed(2)} hours</div>
+                  </div>
+                )}
+                {weeklyPtoRate !== null && (
+                  <div className={styles.field}>
+                    <label>Weekly PTO Rate</label>
+                    <div className={styles.fieldValue}>{weeklyPtoRate.toFixed(2)} hours/week</div>
+                  </div>
+                )}
+                {sickDaysLeft !== null && (
+                  <div className={styles.field}>
+                    <label>Sick Days Left</label>
+                    <div className={styles.fieldValue}>{sickDaysLeft}</div>
+                  </div>
+                )}
               </div>
-            </>
+            </div>
           )}
-
-          {/* Certificates Section */}
-          <CertificatesSection />
-
-          {/* Personal Documents Section */}
-          <DocumentsSection />
 
           {isEditing && (
             <div className={styles.actions}>
@@ -870,6 +875,12 @@ export default function EditProfilePage() {
             </div>
           )}
         </form>
+
+        {/* Certificates Section */}
+        <CertificatesSection />
+
+        {/* Personal Documents Section */}
+        <DocumentsSection />
 
         {/* Change Password Modal */}
         {isEditingPassword && (

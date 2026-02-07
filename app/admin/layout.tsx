@@ -50,15 +50,9 @@ export default function AdminLayout({
       if (response.success && response.data) {
         const isUserAdmin = (response.data as any).isAdmin || false;
         setIsAdmin(isUserAdmin);
+        
         if (!isUserAdmin) {
-          // Check if user has employee profile
-          const user = (response.data as any).user;
-          const hasEmployeeProfile = user?.employee && user.employee !== null && user.employee !== undefined;
-          if (hasEmployeeProfile) {
-            router.push('/employee/profile');
-          } else {
-            router.push('/employee/profile');
-          }
+          router.push('/employee/profile');
         }
       }
     } catch (err) {
@@ -138,4 +132,3 @@ export default function AdminLayout({
     </div>
   );
 }
-

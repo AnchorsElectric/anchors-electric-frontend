@@ -21,7 +21,8 @@ interface User {
   employee?: {
     id: string;
     paymentType: string;
-    ptoDaysLeft?: number;
+    ptoCredit?: number;
+    weeklyPtoRate?: number;
     sickDaysLeft?: number;
   } | null;
 }
@@ -200,8 +201,8 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td>
-                      {user.employee?.ptoDaysLeft !== undefined && user.employee.ptoDaysLeft !== null
-                        ? user.employee.ptoDaysLeft
+                      {user.employee?.ptoCredit !== undefined && user.employee.ptoCredit !== null
+                        ? `${user.employee.ptoCredit.toFixed(2)}h`
                         : 'N/A'}
                     </td>
                     <td>

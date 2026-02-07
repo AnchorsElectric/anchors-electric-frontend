@@ -54,10 +54,13 @@ export default function UserDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [employeeProfile, setEmployeeProfile] = useState<{ 
+    title?: string;
     paymentType: 'HOURLY' | 'SALARY';
     hourlyRate?: number;
     salaryAmount?: number;
-    ptoDaysLeft?: number;
+    ptoCredit?: number;
+    weeklyPtoRate?: number;
+    employmentStartDate?: string;
     sickDaysLeft?: number;
     currentProject?: {
       id: string;
@@ -66,10 +69,13 @@ export default function UserDetailPage() {
       clientName: string;
     };
   } | null>(null);
+  const [employeeTitle, setEmployeeTitle] = useState('');
   const [employeePaymentType, setEmployeePaymentType] = useState<'HOURLY' | 'SALARY'>('HOURLY');
   const [employeeHourlyRate, setEmployeeHourlyRate] = useState('');
   const [employeeSalaryAmount, setEmployeeSalaryAmount] = useState('');
-  const [employeePtoDaysLeft, setEmployeePtoDaysLeft] = useState('10');
+  const [employeePtoCredit, setEmployeePtoCredit] = useState('0');
+  const [employeeWeeklyPtoRate, setEmployeeWeeklyPtoRate] = useState('1.6');
+  const [employeeEmploymentStartDate, setEmployeeEmploymentStartDate] = useState('');
   const [employeeSickDaysLeft, setEmployeeSickDaysLeft] = useState('5');
   const [employeeProjectId, setEmployeeProjectId] = useState<string>('');
   const [projects, setProjects] = useState<Array<{ id: string; name: string; jobNumber: string; clientName: string }>>([]);
@@ -79,6 +85,27 @@ export default function UserDetailPage() {
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [savingEmployee, setSavingEmployee] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteDocumentModal, setShowDeleteDocumentModal] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; name: string; type: 'CERTIFICATE' | 'PERSONAL_DOCUMENT' } | null>(null);
+  const [deletingDocument, setDeletingDocument] = useState(false);
+  const [certificates, setCertificates] = useState<any[]>([]);
+  const [personalDocuments, setPersonalDocuments] = useState<any[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [showCertUploadForm, setShowCertUploadForm] = useState(false);
+  const [showDocUploadForm, setShowDocUploadForm] = useState(false);
+  const [uploadingCert, setUploadingCert] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [certFormData, setCertFormData] = useState({
+    name: '',
+    file: null as File | null,
+    expirationDate: '',
+    doesNotExpire: false,
+  });
+  const [docFormData, setDocFormData] = useState({
+    name: '',
+    file: null as File | null,
+  });
+  const [updatingRole, setUpdatingRole] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     middleName: '',
@@ -115,6 +142,10 @@ export default function UserDetailPage() {
     loadUser();
     loadEmployeeProfile();
     loadProjects();
+    // Load documents after user is loaded
+    if (userId) {
+      loadUserDocuments();
+    }
   }, [router, userId]);
 
   const checkAdminStatus = async () => {
@@ -123,6 +154,7 @@ export default function UserDetailPage() {
       if (response.success && response.data) {
         const profileData = response.data as any;
         const isUserAdmin = profileData.isAdmin || false;
+        
         setIsAdmin(isUserAdmin);
         // The response structure is { user: {...}, isAdmin: ... }
         setCurrentUserId(profileData.user?.id || null);
@@ -175,30 +207,48 @@ export default function UserDetailPage() {
         });
         
         // If user has employee profile, load it
-        if (userData.employee) {
-          const profile: any = {
-            paymentType: userData.employee.paymentType || 'HOURLY',
-          };
-          if (userData.employee.hourlyRate) {
-            profile.hourlyRate = parseFloat(userData.employee.hourlyRate.toString());
-            setEmployeeHourlyRate(userData.employee.hourlyRate.toString());
-          }
-          if (userData.employee.salaryAmount) {
-            profile.salaryAmount = parseFloat(userData.employee.salaryAmount.toString());
-            setEmployeeSalaryAmount(userData.employee.salaryAmount.toString());
-          }
+          if (userData.employee) {
+            const profile: any = {
+              paymentType: userData.employee.paymentType || 'HOURLY',
+            };
+            if (userData.employee.title) {
+              profile.title = userData.employee.title;
+              setEmployeeTitle(userData.employee.title);
+            }
+            if (userData.employee.hourlyRate) {
+              profile.hourlyRate = parseFloat(userData.employee.hourlyRate.toString());
+              setEmployeeHourlyRate(userData.employee.hourlyRate.toString());
+            }
+            if (userData.employee.salaryAmount) {
+              profile.salaryAmount = parseFloat(userData.employee.salaryAmount.toString());
+              setEmployeeSalaryAmount(userData.employee.salaryAmount.toString());
+            }
           if (userData.employee.currentProject) {
             profile.currentProject = userData.employee.currentProject;
             setEmployeeProjectId(userData.employee.currentProject.id);
           } else {
             setEmployeeProjectId('');
           }
-          if (userData.employee.ptoDaysLeft !== undefined && userData.employee.ptoDaysLeft !== null) {
-            profile.ptoDaysLeft = userData.employee.ptoDaysLeft;
-            setEmployeePtoDaysLeft(userData.employee.ptoDaysLeft.toString());
+          if (userData.employee.ptoCredit !== undefined && userData.employee.ptoCredit !== null) {
+            profile.ptoCredit = userData.employee.ptoCredit;
+            setEmployeePtoCredit(userData.employee.ptoCredit.toString());
           } else {
-            profile.ptoDaysLeft = 10;
-            setEmployeePtoDaysLeft('10');
+            profile.ptoCredit = 0;
+            setEmployeePtoCredit('0');
+          }
+          if (userData.employee.weeklyPtoRate !== undefined && userData.employee.weeklyPtoRate !== null) {
+            profile.weeklyPtoRate = userData.employee.weeklyPtoRate;
+            setEmployeeWeeklyPtoRate(userData.employee.weeklyPtoRate.toString());
+          } else {
+            profile.weeklyPtoRate = 1.6;
+            setEmployeeWeeklyPtoRate('1.6');
+          }
+          if (userData.employee.employmentStartDate) {
+            profile.employmentStartDate = userData.employee.employmentStartDate;
+            setEmployeeEmploymentStartDate(userData.employee.employmentStartDate);
+          } else {
+            const today = new Date().toISOString().split('T')[0];
+            setEmployeeEmploymentStartDate(today);
           }
           if (userData.employee.sickDaysLeft !== undefined && userData.employee.sickDaysLeft !== null) {
             profile.sickDaysLeft = userData.employee.sickDaysLeft;
@@ -212,8 +262,12 @@ export default function UserDetailPage() {
         } else {
           // No employee profile
           setEmployeeProfile(null);
+          setEmployeeTitle('');
           setEmployeeProjectId('');
-          setEmployeePtoDaysLeft('10');
+          setEmployeePtoCredit('0');
+          setEmployeeWeeklyPtoRate('1.6');
+          const today = new Date().toISOString().split('T')[0];
+          setEmployeeEmploymentStartDate(today);
           setEmployeeSickDaysLeft('5');
         }
       } else {
@@ -223,6 +277,224 @@ export default function UserDetailPage() {
       setError(err.response?.data?.error || 'Failed to load user');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserDocuments = async () => {
+    try {
+      setLoadingDocuments(true);
+      console.log('Loading documents for user:', userId);
+      const [certsResponse, docsResponse] = await Promise.all([
+        apiClient.getUserDocuments(userId, 'CERTIFICATE'),
+        apiClient.getUserDocuments(userId, 'PERSONAL_DOCUMENT'),
+      ]);
+      
+      console.log('Certificates response:', certsResponse);
+      console.log('Documents response:', docsResponse);
+      
+      if (certsResponse.success && certsResponse.data) {
+        const certs = (certsResponse.data as any).documents || [];
+        console.log('Setting certificates:', certs);
+        setCertificates(certs);
+      } else {
+        console.warn('Failed to load certificates:', certsResponse.error);
+        setCertificates([]);
+      }
+      
+      if (docsResponse.success && docsResponse.data) {
+        const docs = (docsResponse.data as any).documents || [];
+        console.log('Setting personal documents:', docs);
+        setPersonalDocuments(docs);
+      } else {
+        console.warn('Failed to load personal documents:', docsResponse.error);
+        setPersonalDocuments([]);
+      }
+    } catch (err: any) {
+      console.error('Failed to load documents:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
+      setCertificates([]);
+      setPersonalDocuments([]);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  const handleDeleteDocumentClick = (documentId: string, documentName: string, documentType: 'CERTIFICATE' | 'PERSONAL_DOCUMENT') => {
+    setDocumentToDelete({ id: documentId, name: documentName, type: documentType });
+    setShowDeleteDocumentModal(true);
+  };
+
+  const handleDeleteDocument = async () => {
+    if (!documentToDelete) {
+      return;
+    }
+
+    setDeletingDocument(true);
+    setError('');
+
+    try {
+      const response = await apiClient.deleteDocument(documentToDelete.id);
+      if (response.success) {
+        setSuccess('Document deleted successfully');
+        setShowDeleteDocumentModal(false);
+        setDocumentToDelete(null);
+        loadUserDocuments();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.error || 'Failed to delete document');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete document');
+    } finally {
+      setDeletingDocument(false);
+    }
+  };
+
+  const handleCertFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setCertFormData({ ...certFormData, file: e.target.files[0] });
+    }
+  };
+
+  const handleDocFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setDocFormData({ ...docFormData, file: e.target.files[0] });
+    }
+  };
+
+  const handleUploadCertificate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setError('');
+    setSuccess('');
+
+    if (!certFormData.file) {
+      setError('Please select a file');
+      return;
+    }
+
+    if (!certFormData.name.trim()) {
+      setError('Please enter a certificate name');
+      return;
+    }
+
+    if (!certFormData.doesNotExpire && !certFormData.expirationDate) {
+      setError('Please enter an expiration date or check "Does not expire"');
+      return;
+    }
+
+    setUploadingCert(true);
+
+    try {
+      const response = await apiClient.uploadDocumentForUser(userId, certFormData.file, {
+        name: certFormData.name.trim(),
+        type: 'CERTIFICATE',
+        expirationDate: certFormData.doesNotExpire ? null : certFormData.expirationDate,
+        doesNotExpire: certFormData.doesNotExpire,
+      });
+
+      if (response.success) {
+        setSuccess('Certificate uploaded successfully!');
+        setCertFormData({
+          name: '',
+          file: null,
+          expirationDate: '',
+          doesNotExpire: false,
+        });
+        setShowCertUploadForm(false);
+        loadUserDocuments();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.error || 'Failed to upload certificate');
+      }
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to upload certificate';
+      setError(errorMessage);
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setUploadingCert(false);
+    }
+  };
+
+  const handleUploadDocument = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setError('');
+    setSuccess('');
+
+    if (!docFormData.file) {
+      setError('Please select a file');
+      return;
+    }
+
+    if (!docFormData.name.trim()) {
+      setError('Please enter a document name');
+      return;
+    }
+
+    setUploadingDoc(true);
+
+    try {
+      const response = await apiClient.uploadDocumentForUser(userId, docFormData.file, {
+        name: docFormData.name.trim(),
+        type: 'PERSONAL_DOCUMENT',
+        doesNotExpire: true,
+      });
+
+      if (response.success) {
+        setSuccess('Document uploaded successfully!');
+        setDocFormData({
+          name: '',
+          file: null,
+        });
+        setShowDocUploadForm(false);
+        loadUserDocuments();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.error || 'Failed to upload document');
+      }
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to upload document';
+      setError(errorMessage);
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleRoleUpdate = async (newRole: 'USER' | 'ADMIN' | 'ACCOUNTANT' | 'HR' | 'PROJECT_MANAGER') => {
+    if (!user || user.role === newRole) {
+      return;
+    }
+
+    setUpdatingRole(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await apiClient.updateUserRole(userId, newRole);
+      if (response.success) {
+        setSuccess('User role updated successfully');
+        // Update local user state
+        setUser({ ...user, role: newRole });
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.error || 'Failed to update user role');
+        setTimeout(() => setError(''), 5000);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update user role');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -249,6 +521,10 @@ export default function UserDetailPage() {
         const profile: any = {
           paymentType: employee.paymentType || 'HOURLY',
         };
+        if (employee.title) {
+          profile.title = employee.title;
+          setEmployeeTitle(employee.title);
+        }
         if (employee.hourlyRate) {
           profile.hourlyRate = parseFloat(employee.hourlyRate.toString());
           setEmployeeHourlyRate(employee.hourlyRate.toString());
@@ -263,12 +539,26 @@ export default function UserDetailPage() {
         } else {
           setEmployeeProjectId('');
         }
-        if (employee.ptoDaysLeft !== undefined && employee.ptoDaysLeft !== null) {
-          profile.ptoDaysLeft = employee.ptoDaysLeft;
-          setEmployeePtoDaysLeft(employee.ptoDaysLeft.toString());
+        if (employee.ptoCredit !== undefined && employee.ptoCredit !== null) {
+          profile.ptoCredit = employee.ptoCredit;
+          setEmployeePtoCredit(employee.ptoCredit.toString());
         } else {
-          profile.ptoDaysLeft = 10;
-          setEmployeePtoDaysLeft('10');
+          profile.ptoCredit = 0;
+          setEmployeePtoCredit('0');
+        }
+        if (employee.weeklyPtoRate !== undefined && employee.weeklyPtoRate !== null) {
+          profile.weeklyPtoRate = employee.weeklyPtoRate;
+          setEmployeeWeeklyPtoRate(employee.weeklyPtoRate.toString());
+        } else {
+          profile.weeklyPtoRate = 1.6;
+          setEmployeeWeeklyPtoRate('1.6');
+        }
+        if (employee.employmentStartDate) {
+          profile.employmentStartDate = employee.employmentStartDate;
+          setEmployeeEmploymentStartDate(employee.employmentStartDate);
+        } else {
+          const today = new Date().toISOString().split('T')[0];
+          setEmployeeEmploymentStartDate(today);
         }
         if (employee.sickDaysLeft !== undefined && employee.sickDaysLeft !== null) {
           profile.sickDaysLeft = employee.sickDaysLeft;
@@ -352,8 +642,12 @@ export default function UserDetailPage() {
       setError('Please enter a valid salary amount');
       return;
     }
-    if (!employeePtoDaysLeft || parseInt(employeePtoDaysLeft, 10) < 0 || isNaN(parseInt(employeePtoDaysLeft, 10))) {
-      setError('Please enter a valid PTO days value');
+    if (!employeePtoCredit || parseFloat(employeePtoCredit) < 0 || isNaN(parseFloat(employeePtoCredit))) {
+      setError('Please enter a valid PTO credit value');
+      return;
+    }
+    if (!employeeWeeklyPtoRate || parseFloat(employeeWeeklyPtoRate) <= 0 || parseFloat(employeeWeeklyPtoRate) > 4.0 || isNaN(parseFloat(employeeWeeklyPtoRate))) {
+      setError('Please enter a valid weekly PTO rate (between 0 and 4.0)');
       return;
     }
     if (!employeeSickDaysLeft || parseInt(employeeSickDaysLeft, 10) < 0 || isNaN(parseInt(employeeSickDaysLeft, 10))) {
@@ -409,8 +703,11 @@ export default function UserDetailPage() {
       // Update employee profile (only if it exists)
       if (employeeProfile) {
         const employeeData: any = {
+          title: employeeTitle.trim(),
           paymentType: employeePaymentType,
-          ptoDaysLeft: parseInt(employeePtoDaysLeft, 10),
+          ptoCredit: parseFloat(employeePtoCredit),
+          weeklyPtoRate: parseFloat(employeeWeeklyPtoRate),
+          employmentStartDate: employeeEmploymentStartDate,
           sickDaysLeft: parseInt(employeeSickDaysLeft, 10),
         };
         if (employeePaymentType === 'HOURLY') {
@@ -449,8 +746,12 @@ export default function UserDetailPage() {
       setError('Please enter a valid salary amount');
       return;
     }
-    if (!employeePtoDaysLeft || parseInt(employeePtoDaysLeft, 10) < 0 || isNaN(parseInt(employeePtoDaysLeft, 10))) {
-      setError('Please enter a valid PTO days value');
+    if (!employeePtoCredit || parseFloat(employeePtoCredit) < 0 || isNaN(parseFloat(employeePtoCredit))) {
+      setError('Please enter a valid PTO credit value');
+      return;
+    }
+    if (!employeeWeeklyPtoRate || parseFloat(employeeWeeklyPtoRate) <= 0 || parseFloat(employeeWeeklyPtoRate) > 4.0 || isNaN(parseFloat(employeeWeeklyPtoRate))) {
+      setError('Please enter a valid weekly PTO rate (between 0 and 4.0)');
       return;
     }
     if (!employeeSickDaysLeft || parseInt(employeeSickDaysLeft, 10) < 0 || isNaN(parseInt(employeeSickDaysLeft, 10))) {
@@ -461,6 +762,10 @@ export default function UserDetailPage() {
       setError('Please select a project');
       return;
     }
+    if (!employeeTitle.trim()) {
+      setError('Please enter a title');
+      return;
+    }
 
     setSavingEmployee(true);
     setError('');
@@ -468,8 +773,11 @@ export default function UserDetailPage() {
 
     try {
       const employeeData: any = {
+        title: employeeTitle.trim(),
         paymentType: employeePaymentType,
-        ptoDaysLeft: parseInt(employeePtoDaysLeft, 10),
+        ptoCredit: parseFloat(employeePtoCredit),
+        weeklyPtoRate: parseFloat(employeeWeeklyPtoRate),
+        employmentStartDate: employeeEmploymentStartDate,
         sickDaysLeft: parseInt(employeeSickDaysLeft, 10),
       };
       if (employeePaymentType === 'HOURLY') {
@@ -623,14 +931,15 @@ export default function UserDetailPage() {
       <div className={styles.header}>
         <h1 className={styles.title}>User Details</h1>
         <div className={styles.headerActions}>
-          {!isEditing ? (
+          {!isEditing && (
             <>
-              {employeeProfile && (
+              {user && employeeProfile && (
                 <button onClick={async () => {
                   // Load latest employee profile data and projects before entering edit mode
                   await loadEmployeeProfile();
                   await loadProjects();
                   if (employeeProfile) {
+                    setEmployeeTitle(employeeProfile.title || '');
                     setEmployeePaymentType(employeeProfile.paymentType);
                     setEmployeeHourlyRate(employeeProfile.hourlyRate?.toString() || '');
                     setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
@@ -642,7 +951,9 @@ export default function UserDetailPage() {
                     } else {
                       setEmployeeProjectId('');
                     }
-                    setEmployeePtoDaysLeft(employeeProfile.ptoDaysLeft?.toString() || '10');
+                    setEmployeePtoCredit(employeeProfile.ptoCredit?.toString() || '0');
+                    setEmployeeWeeklyPtoRate(employeeProfile.weeklyPtoRate?.toString() || '1.6');
+                    setEmployeeEmploymentStartDate(employeeProfile.employmentStartDate || new Date().toISOString().split('T')[0]);
                     setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '5');
                   }
                   setIsEditing(true);
@@ -659,7 +970,10 @@ export default function UserDetailPage() {
                   setEmployeeHourlyRate('');
                   setEmployeeSalaryAmount('');
                   setEmployeeProjectId(projects.length > 0 ? projects[0].id : '');
-                  setEmployeePtoDaysLeft('10');
+                  setEmployeePtoCredit('0');
+                  setEmployeeWeeklyPtoRate('1.6');
+                  const today = new Date().toISOString().split('T')[0];
+                  setEmployeeEmploymentStartDate(today);
                   setEmployeeSickDaysLeft('5');
                   setShowEmployeeModal(true);
                 }} className={styles.createEmployeeButton}>
@@ -693,7 +1007,7 @@ export default function UserDetailPage() {
                 </button>
               )}
             </>
-          ) : null}
+          )}
           <button onClick={() => router.push('/admin/users')} className={styles.backButton}>
             ← Back to Users
           </button>
@@ -802,9 +1116,19 @@ export default function UserDetailPage() {
             <div className={styles.field}>
               <label>Role</label>
               <div className={styles.value}>
-                <span className={`${styles.role} ${styles[user.role.toLowerCase()]}`}>
-                  {user.role}
-                </span>
+                <select
+                  value={user.role}
+                  onChange={(e) => handleRoleUpdate(e.target.value as 'USER' | 'ADMIN' | 'ACCOUNTANT' | 'HR' | 'PROJECT_MANAGER')}
+                  disabled={updatingRole}
+                  className={styles.roleSelect}
+                >
+                  <option value="USER">User</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="ACCOUNTANT">Accountant</option>
+                  <option value="HR">HR</option>
+                  <option value="PROJECT_MANAGER">Project Manager</option>
+                </select>
+                {updatingRole && <span className={styles.saving}>Updating...</span>}
               </div>
             </div>
             <div className={styles.field}>
@@ -1119,6 +1443,25 @@ export default function UserDetailPage() {
           )}
           <div className={styles.grid}>
             <div className={styles.field}>
+              <label>Title{isEditing && ' *'}</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={employeeTitle}
+                  onChange={(e) => setEmployeeTitle(e.target.value)}
+                  className={styles.input}
+                  placeholder="e.g., Electrician, Project Manager"
+                  required
+                  disabled={saving}
+                  maxLength={100}
+                />
+              ) : (
+                <div className={styles.value}>
+                  {employeeProfile?.title || 'N/A'}
+                </div>
+              )}
+            </div>
+            <div className={styles.field}>
               <label>Payment Type{isEditing && ' *'}</label>
               {isEditing ? (
                 <select
@@ -1196,29 +1539,78 @@ export default function UserDetailPage() {
               </>
             )}
             <div className={styles.field}>
-              <label>PTO Days Left{isEditing && ' *'}</label>
+              <label>PTO Credit (hours){isEditing && ' *'}</label>
               {isEditing ? (
                 <input
                   type="number"
                   min="0"
-                  step="1"
-                  value={employeePtoDaysLeft}
+                  step="0.01"
+                  value={employeePtoCredit}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Only allow digits
-                    if (value === '' || /^\d+$/.test(value)) {
-                      setEmployeePtoDaysLeft(value);
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setEmployeePtoCredit(value);
                     }
                   }}
                   className={styles.input}
-                  placeholder="10"
+                  placeholder="0"
                   required
                   disabled={saving}
                 />
               ) : (
                 <div className={styles.value}>
-                  {employeeProfile?.ptoDaysLeft !== undefined && employeeProfile.ptoDaysLeft !== null 
-                    ? employeeProfile.ptoDaysLeft 
+                  {employeeProfile?.ptoCredit !== undefined && employeeProfile.ptoCredit !== null 
+                    ? `${Number(employeeProfile.ptoCredit).toFixed(2)} hours` 
+                    : 'N/A'}
+                </div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label>Weekly PTO Rate (hours/week){isEditing && ' *'}</label>
+              {isEditing ? (
+                <input
+                  type="number"
+                  min="0"
+                  max="4.0"
+                  step="0.1"
+                  value={employeeWeeklyPtoRate}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      const num = parseFloat(value);
+                      if (value === '' || (!isNaN(num) && num >= 0 && num <= 4.0)) {
+                        setEmployeeWeeklyPtoRate(value);
+                      }
+                    }
+                  }}
+                  className={styles.input}
+                  placeholder="1.6"
+                  required
+                  disabled={saving}
+                />
+              ) : (
+                <div className={styles.value}>
+                  {employeeProfile?.weeklyPtoRate !== undefined && employeeProfile.weeklyPtoRate !== null 
+                    ? `${Number(employeeProfile.weeklyPtoRate).toFixed(2)} hours/week` 
+                    : 'N/A'}
+                </div>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label>Employment Start Date{isEditing && ' *'}</label>
+              {isEditing ? (
+                <input
+                  type="date"
+                  value={employeeEmploymentStartDate}
+                  onChange={(e) => setEmployeeEmploymentStartDate(e.target.value)}
+                  className={styles.input}
+                  required
+                  disabled={saving}
+                />
+              ) : (
+                <div className={styles.value}>
+                  {employeeProfile?.employmentStartDate 
+                    ? new Date(employeeProfile.employmentStartDate).toLocaleDateString()
                     : 'N/A'}
                 </div>
               )}
@@ -1349,14 +1741,19 @@ export default function UserDetailPage() {
                   setEmployeeHourlyRate(employeeProfile.hourlyRate?.toString() || '');
                   setEmployeeSalaryAmount(employeeProfile.salaryAmount?.toString() || '');
                   setEmployeeProjectId(employeeProfile.currentProject?.id || '');
-                  setEmployeePtoDaysLeft(employeeProfile.ptoDaysLeft?.toString() || '10');
+                  setEmployeePtoCredit(employeeProfile.ptoCredit?.toString() || '0');
+                  setEmployeeWeeklyPtoRate(employeeProfile.weeklyPtoRate?.toString() || '1.6');
+                  setEmployeeEmploymentStartDate(employeeProfile.employmentStartDate || new Date().toISOString().split('T')[0]);
                   setEmployeeSickDaysLeft(employeeProfile.sickDaysLeft?.toString() || '5');
                 } else {
                   setEmployeePaymentType('HOURLY');
                   setEmployeeHourlyRate('');
                   setEmployeeSalaryAmount('');
                   setEmployeeProjectId('');
-                  setEmployeePtoDaysLeft('10');
+                  setEmployeePtoCredit('0');
+                  setEmployeeWeeklyPtoRate('1.6');
+                  const today = new Date().toISOString().split('T')[0];
+                  setEmployeeEmploymentStartDate(today);
                   setEmployeeSickDaysLeft('5');
                 }
               }}
@@ -1376,8 +1773,8 @@ export default function UserDetailPage() {
         )}
       </form>
 
-
-      {/* Delete Confirmation Modal */}
+      {/* Certificates Section */}
+      <div className={styles.card}>
       {showDeleteModal && (
         <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -1502,6 +1899,20 @@ export default function UserDetailPage() {
             </div>
             <div className={styles.modalBody}>
               <div className={styles.field}>
+                <label htmlFor="modalEmployeeTitle">Title *</label>
+                <input
+                  id="modalEmployeeTitle"
+                  type="text"
+                  value={employeeTitle}
+                  onChange={(e) => setEmployeeTitle(e.target.value)}
+                  className={styles.input}
+                  placeholder="e.g., Electrician, Project Manager"
+                  required
+                  disabled={savingEmployee}
+                  maxLength={100}
+                />
+              </div>
+              <div className={styles.field}>
                 <label htmlFor="modalPaymentType">Payment Type *</label>
                 <select
                   id="modalPaymentType"
@@ -1556,21 +1967,57 @@ export default function UserDetailPage() {
                 </div>
               )}
               <div className={styles.field}>
-                <label htmlFor="modalPtoDaysLeft">PTO Days Left *</label>
+                <label htmlFor="modalPtoCredit">PTO Credit (hours) *</label>
                 <input
-                  id="modalPtoDaysLeft"
+                  id="modalPtoCredit"
                   type="number"
                   min="0"
-                  step="1"
-                  value={employeePtoDaysLeft}
+                  step="0.01"
+                  value={employeePtoCredit}
                   onChange={(e) => {
                     const value = e.target.value;
-                    if (value === '' || /^\d+$/.test(value)) {
-                      setEmployeePtoDaysLeft(value);
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setEmployeePtoCredit(value);
                     }
                   }}
                   className={styles.input}
-                  placeholder="10"
+                  placeholder="0"
+                  required
+                  disabled={savingEmployee}
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="modalWeeklyPtoRate">Weekly PTO Rate (hours/week) *</label>
+                <input
+                  id="modalWeeklyPtoRate"
+                  type="number"
+                  min="0"
+                  max="4.0"
+                  step="0.1"
+                  value={employeeWeeklyPtoRate}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      const num = parseFloat(value);
+                      if (value === '' || (!isNaN(num) && num >= 0 && num <= 4.0)) {
+                        setEmployeeWeeklyPtoRate(value);
+                      }
+                    }
+                  }}
+                  className={styles.input}
+                  placeholder="1.6"
+                  required
+                  disabled={savingEmployee}
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="modalEmploymentStartDate">Employment Start Date *</label>
+                <input
+                  id="modalEmploymentStartDate"
+                  type="date"
+                  value={employeeEmploymentStartDate}
+                  onChange={(e) => setEmployeeEmploymentStartDate(e.target.value)}
+                  className={styles.input}
                   required
                   disabled={savingEmployee}
                 />
@@ -1636,6 +2083,323 @@ export default function UserDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Certificates Section */}
+      <div className={styles.card}>
+        <div className={styles.section}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 className={styles.sectionTitle}>Certificates</h2>
+            <button
+            type="button"
+            onClick={() => setShowCertUploadForm(!showCertUploadForm)}
+            className={styles.createEmployeeButton}
+            style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+          >
+            {showCertUploadForm ? 'Cancel' : '+ Add Certificate'}
+            </button>
+          </div>
+
+          {showCertUploadForm && (
+          <form onSubmit={handleUploadCertificate} style={{ padding: '1rem', background: '#f9f9f9', borderRadius: '4px', marginBottom: '1.5rem' }} noValidate>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="adminCertName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Certificate Name *</label>
+              <input
+                id="adminCertName"
+                type="text"
+                value={certFormData.name}
+                onChange={(e) => setCertFormData({ ...certFormData, name: e.target.value })}
+                required
+                disabled={uploadingCert}
+                placeholder="e.g., OSHA 30-Hour, First Aid CPR"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="adminCertFile" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Certificate File *</label>
+              <input
+                id="adminCertFile"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={handleCertFileChange}
+                required
+                disabled={uploadingCert}
+                style={{ width: '100%', padding: '0.25rem' }}
+              />
+              {certFormData.file && (
+                <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666', fontStyle: 'italic' }}>Selected: {certFormData.file.name}</p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={certFormData.doesNotExpire}
+                  onChange={(e) => setCertFormData({ ...certFormData, doesNotExpire: e.target.checked, expirationDate: '' })}
+                  disabled={uploadingCert}
+                />
+                Does not expire
+              </label>
+            </div>
+
+            {!certFormData.doesNotExpire && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="adminCertExpiration" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Expiration Date *</label>
+                <input
+                  id="adminCertExpiration"
+                  type="date"
+                  value={certFormData.expirationDate}
+                  onChange={(e) => setCertFormData({ ...certFormData, expirationDate: e.target.value })}
+                  required={!certFormData.doesNotExpire}
+                  disabled={uploadingCert || certFormData.doesNotExpire}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCertUploadForm(false);
+                  setCertFormData({ name: '', file: null, expirationDate: '', doesNotExpire: false });
+                  setError('');
+                }}
+                className={styles.cancelButton}
+                disabled={uploadingCert}
+                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={styles.saveButton}
+                disabled={uploadingCert}
+                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+              >
+                {uploadingCert ? 'Uploading...' : 'Upload Certificate'}
+              </button>
+            </div>
+          </form>
+        )}
+        {loadingDocuments ? (
+          <p>Loading certificates...</p>
+        ) : certificates.length === 0 ? (
+          <p className={styles.emptyMessage}>No certificates uploaded.</p>
+        ) : (
+          <div className={styles.documentList}>
+            {certificates.map((cert) => {
+              const isExpired = cert.expirationDate && new Date(cert.expirationDate) < new Date();
+              const isExpiringSoon = cert.expirationDate && !isExpired && 
+                Math.ceil((new Date(cert.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 30;
+              
+              return (
+                <div key={cert.id} className={styles.documentItem}>
+                  <div className={styles.documentInfo}>
+                    <h3 className={styles.documentName}>{cert.name}</h3>
+                    <p className={styles.documentFileName}>{cert.fileName}</p>
+                    <div className={styles.documentMeta}>
+                      {cert.doesNotExpire ? (
+                        <span className={styles.noExpiration}>No expiration</span>
+                      ) : (
+                        <span
+                          className={`${styles.expirationDate} ${
+                            isExpired ? styles.expired : ''
+                          } ${isExpiringSoon ? styles.expiringSoon : ''}`}
+                        >
+                          Expires: {new Date(cert.expirationDate).toLocaleDateString()}
+                          {isExpired && ' (Expired)'}
+                          {isExpiringSoon && ' (Expiring Soon)'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className={styles.documentActions}>
+                    {cert.fileUrl && (
+                      <a
+                        href={cert.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.viewButton}
+                      >
+                        View
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDocumentClick(cert.id, cert.name, 'CERTIFICATE')}
+                      className={styles.documentDeleteButton}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        </div>
+      </div>
+
+      {/* Personal Documents Section */}
+      <div className={styles.card}>
+        <div className={styles.section}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 className={styles.sectionTitle}>Personal Documents</h2>
+            <button
+            type="button"
+            onClick={() => setShowDocUploadForm(!showDocUploadForm)}
+            className={styles.createEmployeeButton}
+            style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+          >
+            {showDocUploadForm ? 'Cancel' : '+ Add Document'}
+            </button>
+          </div>
+
+          {showDocUploadForm && (
+          <form onSubmit={handleUploadDocument} style={{ padding: '1rem', background: '#f9f9f9', borderRadius: '4px', marginBottom: '1.5rem' }} noValidate>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="adminDocName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Document Name *</label>
+              <input
+                id="adminDocName"
+                type="text"
+                value={docFormData.name}
+                onChange={(e) => setDocFormData({ ...docFormData, name: e.target.value })}
+                required
+                disabled={uploadingDoc}
+                placeholder="e.g., SSN Card, Driver License"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="adminDocFile" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Document File *</label>
+              <input
+                id="adminDocFile"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={handleDocFileChange}
+                required
+                disabled={uploadingDoc}
+                style={{ width: '100%', padding: '0.25rem' }}
+              />
+              {docFormData.file && (
+                <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666', fontStyle: 'italic' }}>Selected: {docFormData.file.name}</p>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDocUploadForm(false);
+                  setDocFormData({ name: '', file: null });
+                  setError('');
+                }}
+                className={styles.cancelButton}
+                disabled={uploadingDoc}
+                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={styles.saveButton}
+                disabled={uploadingDoc}
+                style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+              >
+                {uploadingDoc ? 'Uploading...' : 'Upload Document'}
+              </button>
+            </div>
+          </form>
+        )}
+        {loadingDocuments ? (
+          <p>Loading documents...</p>
+        ) : personalDocuments.length === 0 ? (
+          <p className={styles.emptyMessage}>No personal documents uploaded.</p>
+        ) : (
+          <div className={styles.documentList}>
+            {personalDocuments.map((doc) => (
+              <div key={doc.id} className={styles.documentItem}>
+                <div className={styles.documentInfo}>
+                  <h3 className={styles.documentName}>{doc.name}</h3>
+                  <p className={styles.documentFileName}>{doc.fileName}</p>
+                  <p className={styles.documentMeta}>
+                    Uploaded: {new Date(doc.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className={styles.documentActions}>
+                  {doc.fileUrl && (
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.viewButton}
+                    >
+                      View
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDocumentClick(doc.id, doc.name, 'PERSONAL_DOCUMENT')}
+                    className={styles.documentDeleteButton}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        </div>
+      </div>
+
+      {/* Delete Document Confirmation Modal */}
+      {showDeleteDocumentModal && documentToDelete && (
+        <div className={styles.modalOverlay} onClick={() => !deletingDocument && setShowDeleteDocumentModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Delete Document</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !deletingDocument && setShowDeleteDocumentModal(false)}
+                disabled={deletingDocument}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Are you sure you want to delete <strong>{documentToDelete.name}</strong>?
+              </p>
+              <p className={styles.warning}>
+                This action cannot be undone. The document will be permanently deleted from the system.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => {
+                  setShowDeleteDocumentModal(false);
+                  setDocumentToDelete(null);
+                }}
+                disabled={deletingDocument}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.deleteButton}
+                onClick={handleDeleteDocument}
+                disabled={deletingDocument}
+              >
+                {deletingDocument ? 'Deleting...' : 'Delete Document'}
+              </button>
+            </div>
+          </div>
+        </div>
+        )}
+    </div>
     </div>
   );
 }

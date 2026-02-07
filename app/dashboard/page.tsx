@@ -31,9 +31,6 @@ function DashboardContent() {
         const isUserAdmin = (response.data as any).isAdmin || false;
         setIsAdmin(isUserAdmin);
         
-        const user = (response.data as any).user;
-        const hasEmployeeProfile = user?.employee && user.employee !== null && user.employee !== undefined;
-        
         if (isUserAdmin) {
           router.push('/admin/profile');
         } else {

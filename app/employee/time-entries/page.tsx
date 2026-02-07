@@ -24,6 +24,8 @@ interface TimeEntry {
   isUnpaidLeave?: boolean;
   payPeriodId?: string | null;
   projectId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   payPeriod?: {
     id: string;
     status: string;
@@ -278,28 +280,28 @@ export default function TimeEntriesPage() {
         setEditingEntry(existingEntry);
         if (existingEntry.isPTO) {
           setEntryType('pto');
-          setStartTime(existingEntry.startTime || '09:00');
-          setEndTime(existingEntry.endTime || '17:30');
+          setStartTime(null);
+          setEndTime(null);
         } else if (existingEntry.isHoliday) {
           setEntryType('holiday');
-          setStartTime(existingEntry.startTime || '09:00');
-          setEndTime(existingEntry.endTime || '17:30');
+          setStartTime(null);
+          setEndTime(null);
         } else if (existingEntry.sickDay) {
           setEntryType('sick');
-          setStartTime(existingEntry.startTime || '09:00');
-          setEndTime(existingEntry.endTime || '17:30');
+          setStartTime(null);
+          setEndTime(null);
         } else if (existingEntry.rotationDay) {
           setEntryType('rotation');
-          setStartTime(existingEntry.startTime || '09:00');
-          setEndTime(existingEntry.endTime || '17:30');
+          setStartTime(null);
+          setEndTime(null);
         } else if (existingEntry.isUnpaidLeave) {
           setEntryType('unpaidLeave');
           setStartTime(null);
           setEndTime(null);
         } else if (existingEntry.isTravelDay) {
           setEntryType('travel');
-          setStartTime(existingEntry.startTime || '09:00');
-          setEndTime(existingEntry.endTime || '17:30');
+          setStartTime(null);
+          setEndTime(null);
         } else if (!existingEntry.startTime && !existingEntry.endTime && !existingEntry.totalHours && (existingEntry.perDiem !== undefined && existingEntry.perDiem > 0 || existingEntry.hasPerDiem)) {
           setEntryType('none');
           setStartTime('09:00');
@@ -374,10 +376,12 @@ export default function TimeEntriesPage() {
         return null;
       }
       
+      // Sort by createdAt (most recently created first) instead of by date
       const sortedEntries = [...filteredEntries].sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateB.getTime() - dateA.getTime();
+        // Use createdAt if available, otherwise fall back to date
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
+        return timeB - timeA; // Descending order (most recent first)
       });
       
       return sortedEntries[0];
@@ -420,20 +424,20 @@ export default function TimeEntriesPage() {
         hasPerDiemValue = true;
       } else if (lastEntry.isHoliday) {
         entryTypeValue = 'holiday';
-        startTimeValue = '09:00';
-        endTimeValue = '17:30';
+        startTimeValue = null;
+        endTimeValue = null;
         const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
         hasPerDiemValue = perDiemValue > 0;
       } else if (lastEntry.sickDay) {
         entryTypeValue = 'sick';
-        startTimeValue = '09:00';
-        endTimeValue = '17:30';
+        startTimeValue = null;
+        endTimeValue = null;
         const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
         hasPerDiemValue = perDiemValue > 0;
       } else if (lastEntry.rotationDay === true) {
         entryTypeValue = 'rotation';
-        startTimeValue = '09:00';
-        endTimeValue = '17:30';
+        startTimeValue = null;
+        endTimeValue = null;
         const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
         hasPerDiemValue = perDiemValue > 0;
       } else if (lastEntry.isUnpaidLeave) {
@@ -443,12 +447,12 @@ export default function TimeEntriesPage() {
         hasPerDiemValue = false;
       } else if (lastEntry.isPTO) {
         entryTypeValue = 'pto';
-        startTimeValue = '09:00';
-        endTimeValue = '17:30';
+        startTimeValue = null;
+        endTimeValue = null;
       } else if (lastEntry.isTravelDay) {
         entryTypeValue = 'travel';
-        startTimeValue = '09:00';
-        endTimeValue = '17:30';
+        startTimeValue = null;
+        endTimeValue = null;
         const perDiemValue = lastEntry.perDiem !== undefined ? lastEntry.perDiem : (lastEntry.hasPerDiem ? 1 : 0);
         hasPerDiemValue = perDiemValue > 0;
       } else {
@@ -484,28 +488,28 @@ export default function TimeEntriesPage() {
         entryData.hasPerDiem = hasPerDiemValue;
       } else if (entryTypeValue === 'pto') {
         entryData.isPTO = true;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryTypeValue === 'holiday') {
         entryData.isHoliday = true;
         entryData.hasPerDiem = hasPerDiemValue;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryTypeValue === 'sick') {
         entryData.sickDay = true;
         entryData.hasPerDiem = hasPerDiemValue;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryTypeValue === 'rotation') {
         entryData.rotationDay = true;
         entryData.hasPerDiem = hasPerDiemValue;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryTypeValue === 'travel') {
         entryData.isTravelDay = true;
         entryData.hasPerDiem = hasPerDiemValue;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryTypeValue === 'unpaidLeave') {
         entryData.isUnpaidLeave = true;
         entryData.startTime = null;
@@ -583,23 +587,23 @@ export default function TimeEntriesPage() {
         entryData.hasPerDiem = hasPerDiem;
       } else if (entryType === 'pto') {
         entryData.isPTO = true;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryType === 'holiday') {
         entryData.isHoliday = true;
         entryData.hasPerDiem = hasPerDiem;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryType === 'sick') {
         entryData.sickDay = true;
         entryData.hasPerDiem = hasPerDiem;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryType === 'rotation') {
         entryData.rotationDay = true;
         entryData.hasPerDiem = hasPerDiem;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
         entryData.sickDay = false;
         entryData.isTravelDay = false;
         entryData.isPTO = false;
@@ -607,8 +611,8 @@ export default function TimeEntriesPage() {
       } else if (entryType === 'travel') {
         entryData.isTravelDay = true;
         entryData.hasPerDiem = hasPerDiem;
-        entryData.startTime = '09:00';
-        entryData.endTime = '17:30';
+        entryData.startTime = null;
+        entryData.endTime = null;
       } else if (entryType === 'unpaidLeave') {
         entryData.isUnpaidLeave = true;
         entryData.startTime = null;
@@ -773,49 +777,37 @@ export default function TimeEntriesPage() {
 
   const calculateWeekSummary = () => {
     const weekEntries = getCurrentWeekEntries();
-    let totalHours = 0;
-    let totalHolidayHours = 0;
-    let totalSickHours = 0;
-    let totalRotationHours = 0;
-    let totalTravelHours = 0;
-    let totalPtoHours = 0;
+    let totalWorkingHours = 0;
     let totalPerDiem = 0;
     
     weekEntries.forEach(entry => {
+      // Skip unpaid leave - no hours and no per diem
       if (entry.isUnpaidLeave) {
         return;
       }
       
-      if (entry.isHoliday) {
-        totalHolidayHours += 8;
-      } else if (entry.sickDay) {
-        totalSickHours += 8;
-      } else if (entry.rotationDay) {
-        totalRotationHours += 8;
-      } else if (entry.isTravelDay) {
-        totalTravelHours += 8;
-      } else if (entry.isPTO) {
-        totalPtoHours += 8;
-      } else {
-        if (entry.totalHours !== null && entry.totalHours !== undefined) {
-          totalHours += entry.totalHours;
-        }
-      }
-      
+      // Calculate per diem for all entry types (except unpaid leave)
       const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
       totalPerDiem += perDiemValue;
+      
+      // Only count hours from regular entries (not PTO, sick, holiday, rotation, travel, or unpaid leave)
+      if (entry.isHoliday || entry.sickDay || entry.rotationDay || entry.isTravelDay || entry.isPTO) {
+        return;
+      }
+      
+      // Only regular entries have hours
+      if (entry.totalHours !== null && entry.totalHours !== undefined) {
+        totalWorkingHours += entry.totalHours;
+      }
     });
     
-    const overtimeHours = totalHours > 40 ? totalHours - 40 : 0;
+    // Regular hours cap at 40, anything over is overtime
+    const regularHours = Math.min(totalWorkingHours, 40);
+    const overtimeHours = Math.max(totalWorkingHours - 40, 0);
     
     return {
-      totalHours: Math.round(totalHours * 100) / 100,
+      regularHours: Math.round(regularHours * 100) / 100,
       overtimeHours: Math.round(overtimeHours * 100) / 100,
-      totalHolidayHours: Math.round(totalHolidayHours * 100) / 100,
-      totalSickHours: Math.round(totalSickHours * 100) / 100,
-      totalRotationHours: Math.round(totalRotationHours * 100) / 100,
-      totalTravelHours: Math.round(totalTravelHours * 100) / 100,
-      totalPtoHours: Math.round(totalPtoHours * 100) / 100,
       totalPerDiem: Math.round(totalPerDiem * 100) / 100,
     };
   };
@@ -954,22 +946,16 @@ export default function TimeEntriesPage() {
     const details: string[] = [];
     
     if (entry.isPTO === true) {
-      if (entry.startTime && entry.endTime) {
-        details.push(`${entry.startTime} - ${entry.endTime}`);
-      }
-      if (entry.totalHours) {
-        details.push(`${entry.totalHours}h`);
+      // PTO entries don't have hours or times
+      const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
+      if (perDiemValue > 0) {
+        details.push('Per Diem');
       }
       return { type: 'PTO', details };
     }
     
     if (entry.isHoliday === true) {
-      if (entry.startTime && entry.endTime) {
-        details.push(`${entry.startTime} - ${entry.endTime}`);
-      }
-      if (entry.totalHours) {
-        details.push(`${entry.totalHours}h`);
-      }
+      // Holiday entries don't have hours or times
       const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
       if (perDiemValue > 0) {
         details.push('Per Diem');
@@ -978,12 +964,7 @@ export default function TimeEntriesPage() {
     }
     
     if (entry.sickDay === true) {
-      if (entry.startTime && entry.endTime) {
-        details.push(`${entry.startTime} - ${entry.endTime}`);
-      }
-      if (entry.totalHours) {
-        details.push(`${entry.totalHours}h`);
-      }
+      // Sick day entries don't have hours or times
       const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
       if (perDiemValue > 0) {
         details.push('Per Diem');
@@ -992,12 +973,7 @@ export default function TimeEntriesPage() {
     }
     
     if (entry.rotationDay === true) {
-      if (entry.startTime && entry.endTime) {
-        details.push(`${entry.startTime} - ${entry.endTime}`);
-      }
-      if (entry.totalHours) {
-        details.push(`${entry.totalHours}h`);
-      }
+      // Rotation day entries don't have hours or times
       const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
       if (perDiemValue > 0) {
         details.push('Per Diem');
@@ -1010,12 +986,7 @@ export default function TimeEntriesPage() {
     }
     
     if (entry.isTravelDay === true) {
-      if (entry.startTime && entry.endTime) {
-        details.push(`${entry.startTime} - ${entry.endTime}`);
-      }
-      if (entry.totalHours) {
-        details.push(`${entry.totalHours}h`);
-      }
+      // Travel day entries don't have hours or times
       const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
       if (perDiemValue > 0) {
         details.push('Per Diem');
@@ -1209,43 +1180,13 @@ export default function TimeEntriesPage() {
               <h3 className={styles.summaryTitle}>Week Summary</h3>
               <div className={styles.summaryGrid}>
                 <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Total Regular Hours:</span>
-                  <span className={styles.summaryValue}>{summary.totalHours.toFixed(2)}h</span>
+                  <span className={styles.summaryLabel}>Regular Hours:</span>
+                  <span className={styles.summaryValue}>{summary.regularHours.toFixed(2)}h</span>
                 </div>
                 {summary.overtimeHours > 0 && (
                   <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Overtime Hours:</span>
+                    <span className={styles.summaryLabel}>Overtime:</span>
                     <span className={styles.summaryValue}>{summary.overtimeHours.toFixed(2)}h</span>
-                  </div>
-                )}
-                {summary.totalHolidayHours > 0 && (
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Holiday Hours:</span>
-                    <span className={styles.summaryValue}>{summary.totalHolidayHours.toFixed(2)}h</span>
-                  </div>
-                )}
-                {summary.totalSickHours > 0 && (
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Sick Hours:</span>
-                    <span className={styles.summaryValue}>{summary.totalSickHours.toFixed(2)}h</span>
-                  </div>
-                )}
-                {summary.totalRotationHours > 0 && (
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Rotation Hours:</span>
-                    <span className={styles.summaryValue}>{summary.totalRotationHours.toFixed(2)}h</span>
-                  </div>
-                )}
-                {summary.totalTravelHours > 0 && (
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>Travel Hours:</span>
-                    <span className={styles.summaryValue}>{summary.totalTravelHours.toFixed(2)}h</span>
-                  </div>
-                )}
-                {summary.totalPtoHours > 0 && (
-                  <div className={styles.summaryItem}>
-                    <span className={styles.summaryLabel}>PTO Hours:</span>
-                    <span className={styles.summaryValue}>{summary.totalPtoHours.toFixed(2)}h</span>
                   </div>
                 )}
                 {summary.totalPerDiem > 0 && (
@@ -1326,8 +1267,8 @@ export default function TimeEntriesPage() {
                       disabled={selectedDate ? isWeekend(selectedDate) : false}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
+                        setStartTime(null);
+                        setEndTime(null);
                       }}
                     />
                     Holiday
@@ -1342,8 +1283,8 @@ export default function TimeEntriesPage() {
                       disabled={selectedDate ? isWeekend(selectedDate) : false}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
+                        setStartTime(null);
+                        setEndTime(null);
                       }}
                     />
                     Rotation Day
@@ -1358,8 +1299,8 @@ export default function TimeEntriesPage() {
                       disabled={selectedDate ? isWeekend(selectedDate) : false}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
+                        setStartTime(null);
+                        setEndTime(null);
                       }}
                     />
                     PTO{ptoDaysLeft !== null && ` (${ptoDaysLeft} ${ptoDaysLeft === 1 ? 'day' : 'days'} left)`}
@@ -1373,8 +1314,8 @@ export default function TimeEntriesPage() {
                       checked={entryType === 'travel'}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
+                        setStartTime(null);
+                        setEndTime(null);
                       }}
                     />
                     Travel Day
@@ -1388,8 +1329,8 @@ export default function TimeEntriesPage() {
                       disabled={selectedDate ? isWeekend(selectedDate) : false}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
-                        setStartTime('09:00');
-                        setEndTime('17:30');
+                        setStartTime(null);
+                        setEndTime(null);
                       }}
                     />
                     Sick Day{sickDaysLeft !== null && ` (${sickDaysLeft} ${sickDaysLeft === 1 ? 'day' : 'days'} left)`}
@@ -1518,35 +1459,7 @@ export default function TimeEntriesPage() {
                 </>
               )}
 
-              {(entryType === 'sick' || entryType === 'holiday' || entryType === 'pto' || entryType === 'travel') && (
-                <>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>Start Time</label>
-                    <input
-                      type="time"
-                      value={startTime || ''}
-                      readOnly
-                      className={styles.input}
-                      style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label className={styles.label}>End Time</label>
-                    <input
-                      type="time"
-                      value={endTime || ''}
-                      readOnly
-                      className={styles.input}
-                      style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <p className={styles.infoText}>
-                      <strong>Total Hours: 8 hours</strong>
-                    </p>
-                  </div>
-                </>
-              )}
+              {/* Special entry types (PTO, sick, holiday, travel, rotation, unpaid leave) don't have start/end times or hours */}
 
               {entryType === 'sick' && (
                 <div className={styles.formGroup}>

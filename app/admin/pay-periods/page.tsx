@@ -71,6 +71,9 @@ export default function AdminPayPeriodsPage() {
   const [success, setSuccess] = useState('');
   const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [employeeFilter, setEmployeeFilter] = useState<string>('');
+  const [employeeFilterInput, setEmployeeFilterInput] = useState<string>('');
+  const [showEmployeeSuggestions, setShowEmployeeSuggestions] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
   const [rejectionReason, setRejectionReason] = useState<string>('');
@@ -102,6 +105,55 @@ export default function AdminPayPeriodsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Get unique employee names for autocomplete
+  const getEmployeeNames = (): string[] => {
+    const employeeMap = new Map<string, string>();
+    payPeriods.forEach(period => {
+      const fullName = `${period.employee.user.firstName} ${period.employee.user.lastName}`;
+      employeeMap.set(fullName.toLowerCase(), fullName);
+    });
+    return Array.from(employeeMap.values()).sort();
+  };
+
+  // Filter employee names based on input
+  const getFilteredEmployeeSuggestions = (): string[] => {
+    if (!employeeFilterInput.trim()) {
+      return getEmployeeNames();
+    }
+    const input = employeeFilterInput.toLowerCase();
+    return getEmployeeNames().filter(name => 
+      name.toLowerCase().includes(input)
+    );
+  };
+
+  // Filter pay periods based on status and employee
+  const getFilteredPayPeriods = (): PayPeriod[] => {
+    let filtered = payPeriods;
+
+    // Apply status filter
+    if (statusFilter !== 'ALL') {
+      filtered = filtered.filter(period => period.status === statusFilter);
+    }
+
+    // Apply employee filter
+    if (employeeFilter.trim()) {
+      const filterLower = employeeFilter.toLowerCase();
+      filtered = filtered.filter(period => {
+        const fullName = `${period.employee.user.firstName} ${period.employee.user.lastName}`.toLowerCase();
+        return fullName.includes(filterLower);
+      });
+    }
+
+    // Sort by week (startDate) - most recent weeks first
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.startDate).getTime();
+      const dateB = new Date(b.startDate).getTime();
+      return dateB - dateA; // Descending order (most recent first)
+    });
+
+    return filtered;
   };
 
   const toggleExpand = (periodId: string) => {
@@ -156,6 +208,38 @@ export default function AdminPayPeriodsPage() {
     const perDiemValue = entry.perDiem !== undefined ? entry.perDiem : (entry.hasPerDiem ? 1 : 0);
     if (!entry.startTime && !entry.endTime && perDiemValue > 0) return 'Per Diem Only';
     return 'Regular';
+  };
+
+  const hasSpecialEntries = (period: PayPeriod): boolean => {
+    // Check if pay period includes any of these specific entry types:
+    // - Sick Day
+    // - PTO
+    // - Holiday
+    // - Rotation Day
+    // - Travel Day
+    
+    // Check aggregated totals first (more efficient)
+    if (period.totalPto > 0) {
+      return true; // PTO
+    }
+    
+    if (period.totalSickDays > 0) {
+      return true; // Sick Day
+    }
+    
+    if (period.totalRotationDays !== undefined && period.totalRotationDays > 0) {
+      return true; // Rotation Day
+    }
+    
+    // Check time entries for holiday or travel day (these might not have aggregated totals in the interface)
+    if (period.timeEntries && period.timeEntries.length > 0) {
+      return period.timeEntries.some(entry => 
+        entry.isHoliday ||  // Holiday
+        entry.isTravelDay   // Travel Day
+      );
+    }
+    
+    return false;
   };
 
   const handleApprove = async (periodId: string) => {
@@ -258,19 +342,71 @@ export default function AdminPayPeriodsPage() {
             <option value="PAID">Paid</option>
             <option value="ALL">All</option>
           </select>
+          <label htmlFor="employeeFilter">Employee:</label>
+          <div className={styles.autocompleteWrapper}>
+            <input
+              id="employeeFilter"
+              type="text"
+              value={employeeFilterInput}
+              onChange={(e) => {
+                setEmployeeFilterInput(e.target.value);
+                setShowEmployeeSuggestions(true);
+                setEmployeeFilter(e.target.value);
+              }}
+              onFocus={() => setShowEmployeeSuggestions(true)}
+              onBlur={() => {
+                // Delay hiding suggestions to allow click on suggestion
+                setTimeout(() => setShowEmployeeSuggestions(false), 200);
+              }}
+              placeholder="Search employee..."
+              className={styles.filterInput}
+            />
+            {showEmployeeSuggestions && getFilteredEmployeeSuggestions().length > 0 && (
+              <div className={styles.autocompleteDropdown}>
+                {getFilteredEmployeeSuggestions().map((name, index) => (
+                  <div
+                    key={index}
+                    className={styles.autocompleteItem}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setEmployeeFilterInput(name);
+                      setEmployeeFilter(name);
+                      setShowEmployeeSuggestions(false);
+                    }}
+                  >
+                    {name}
+                  </div>
+                ))}
+              </div>
+            )}
+            {employeeFilterInput && (
+              <button
+                type="button"
+                className={styles.clearFilterButton}
+                onClick={() => {
+                  setEmployeeFilterInput('');
+                  setEmployeeFilter('');
+                  setShowEmployeeSuggestions(false);
+                }}
+                aria-label="Clear filter"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
       {success && <div className={styles.success}>{success}</div>}
 
-      {payPeriods.length === 0 ? (
+      {getFilteredPayPeriods().length === 0 ? (
         <div className={styles.emptyState}>
-          <p>No pay periods found with status: {statusFilter}</p>
+          <p>No pay periods found{statusFilter !== 'ALL' ? ` with status: ${statusFilter}` : ''}{employeeFilter ? ` for employee: ${employeeFilter}` : ''}</p>
         </div>
       ) : (
         <div className={styles.payPeriodsList}>
-          {payPeriods.map((period) => {
+          {getFilteredPayPeriods().map((period) => {
             const isExpanded = expandedPeriods.has(period.id);
             return (
               <div key={period.id} className={styles.payPeriodCard}>
@@ -287,15 +423,30 @@ export default function AdminPayPeriodsPage() {
                       {formatDate(period.startDate)} - {formatDate(period.endDate)}
                     </div>
                     <div className={styles.summary}>
-                      {period.totalHours !== null ? `${period.totalHours.toFixed(2)} regular hrs` : '0 hrs'}
-                      {period.totalOvertimeHours !== null && period.totalOvertimeHours > 0 && (
-                        <span className={styles.overtime}>
-                          {' '}({period.totalOvertimeHours.toFixed(2)} OT)
-                        </span>
-                      )}
-                      {period.totalPerDiem > 0 && (
-                        <span className={styles.perDiem}> • ${(Number(period.totalPerDiem) * 50).toFixed(2)} per diem</span>
-                      )}
+                      {(() => {
+                        // Cap regular hours at 40 for display, show excess as overtime
+                        const totalHours = period.totalHours !== null ? Number(period.totalHours) : 0;
+                        const regularHours = Math.min(totalHours, 40);
+                        const overtimeHours = Math.max(totalHours - 40, 0);
+                        return (
+                          <>
+                            <span>Regular Hours: {regularHours.toFixed(2)}</span>
+                            {overtimeHours > 0 && (
+                              <span className={styles.overtime}>
+                                {' • '}Overtime: {overtimeHours.toFixed(2)}
+                              </span>
+                            )}
+                            {period.totalPerDiem > 0 && (
+                              <span className={styles.perDiem}> • Per Diem: ${(Number(period.totalPerDiem) * 50).toFixed(2)}</span>
+                            )}
+                            {hasSpecialEntries(period) && (
+                              <span className={styles.specialEntryBadge} title="Contains special time entries (PTO, Sick, Holiday, Rotation Day, Travel Day)">
+                                Special Entries
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className={styles.payPeriodActions}>
@@ -391,48 +542,32 @@ export default function AdminPayPeriodsPage() {
                     <div className={styles.detailsSection}>
                       <h3>Period Information</h3>
                       <div className={styles.infoGrid}>
-                        <div className={styles.infoItem}>
-                          <label>Total Regular Hours:</label>
-                          <span>{period.totalHours !== null ? period.totalHours.toFixed(2) : '0.00'}</span>
-                        </div>
-                        <div className={styles.infoItem}>
-                          <label>Overtime Hours:</label>
-                          <span>{period.totalOvertimeHours !== null ? period.totalOvertimeHours.toFixed(2) : '0.00'}</span>
-                        </div>
-                        {(period.totalHolidayHours !== undefined && period.totalHolidayHours !== null && period.totalHolidayHours > 0) && (
-                          <div className={styles.infoItem}>
-                            <label>Holiday Hours:</label>
-                            <span>{period.totalHolidayHours.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {(period.totalSickHours !== undefined && period.totalSickHours !== null && period.totalSickHours > 0) && (
-                          <div className={styles.infoItem}>
-                            <label>Sick Hours:</label>
-                            <span>{period.totalSickHours.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {(period.totalRotationHours !== undefined && period.totalRotationHours !== null && period.totalRotationHours > 0) && (
-                          <div className={styles.infoItem}>
-                            <label>Rotation Hours:</label>
-                            <span>{period.totalRotationHours.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {(period.totalTravelHours !== undefined && period.totalTravelHours !== null && period.totalTravelHours > 0) && (
-                          <div className={styles.infoItem}>
-                            <label>Travel Hours:</label>
-                            <span>{period.totalTravelHours.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {(period.totalPtoHours !== undefined && period.totalPtoHours !== null && period.totalPtoHours > 0) && (
-                          <div className={styles.infoItem}>
-                            <label>PTO Hours:</label>
-                            <span>{period.totalPtoHours.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className={styles.infoItem}>
-                          <label>Total Per Diem:</label>
-                          <span>${(Number(period.totalPerDiem) * 50).toFixed(2)}</span>
-                        </div>
+                        {(() => {
+                          // Cap regular hours at 40 for display, show excess as overtime
+                          const totalHours = period.totalHours !== null ? Number(period.totalHours) : 0;
+                          const regularHours = Math.min(totalHours, 40);
+                          const overtimeHours = Math.max(totalHours - 40, 0);
+                          return (
+                            <>
+                              <div className={styles.infoItem}>
+                                <label>Regular Hours:</label>
+                                <span>{regularHours.toFixed(2)}</span>
+                              </div>
+                              {overtimeHours > 0 && (
+                                <div className={styles.infoItem}>
+                                  <label>Overtime:</label>
+                                  <span>{overtimeHours.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {period.totalPerDiem > 0 && (
+                                <div className={styles.infoItem}>
+                                  <label>Total Per Diem:</label>
+                                  <span>${(Number(period.totalPerDiem) * 50).toFixed(2)}</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                         {period.submittedAt && (
                           <div className={styles.infoItem}>
                             <label>Submitted At:</label>

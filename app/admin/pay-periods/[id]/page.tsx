@@ -342,9 +342,14 @@ export default function AdminPayPeriodDetailPage() {
       };
     }
 
+    // Cap regular hours at 40 for display, show excess as overtime
+    const totalHours = payPeriod.totalHours ? Number(payPeriod.totalHours) : 0;
+    const regularHours = Math.min(totalHours, 40);
+    const overtimeHours = Math.max(totalHours - 40, 0);
+
     return {
-      totalHours: payPeriod.totalHours || 0,
-      overtimeHours: payPeriod.totalOvertimeHours || 0,
+      totalHours: regularHours, // Capped at 40 for display
+      overtimeHours: overtimeHours,
       totalHolidayHours: payPeriod.totalHolidayHours || 0,
       totalSickHours: payPeriod.totalSickHours || 0,
       totalRotationHours: payPeriod.totalRotationHours || 0,
@@ -440,43 +445,13 @@ export default function AdminPayPeriodDetailPage() {
           <h3 className={timeEntryStyles.summaryTitle}>Week Summary</h3>
           <div className={timeEntryStyles.summaryGrid}>
             <div className={timeEntryStyles.summaryItem}>
-              <span className={timeEntryStyles.summaryLabel}>Total Regular Hours:</span>
+              <span className={timeEntryStyles.summaryLabel}>Regular Hours:</span>
               <span className={timeEntryStyles.summaryValue}>{summary.totalHours.toFixed(2)}h</span>
             </div>
             {summary.overtimeHours > 0 && (
               <div className={timeEntryStyles.summaryItem}>
-                <span className={timeEntryStyles.summaryLabel}>Overtime Hours:</span>
+                <span className={timeEntryStyles.summaryLabel}>Overtime:</span>
                 <span className={timeEntryStyles.summaryValue}>{summary.overtimeHours.toFixed(2)}h</span>
-              </div>
-            )}
-            {summary.totalHolidayHours > 0 && (
-              <div className={timeEntryStyles.summaryItem}>
-                <span className={timeEntryStyles.summaryLabel}>Holiday Hours:</span>
-                <span className={timeEntryStyles.summaryValue}>{summary.totalHolidayHours.toFixed(2)}h</span>
-              </div>
-            )}
-            {summary.totalSickHours > 0 && (
-              <div className={timeEntryStyles.summaryItem}>
-                <span className={timeEntryStyles.summaryLabel}>Sick Hours:</span>
-                <span className={timeEntryStyles.summaryValue}>{summary.totalSickHours.toFixed(2)}h</span>
-              </div>
-            )}
-            {summary.totalRotationHours > 0 && (
-              <div className={timeEntryStyles.summaryItem}>
-                <span className={timeEntryStyles.summaryLabel}>Rotation Hours:</span>
-                <span className={timeEntryStyles.summaryValue}>{summary.totalRotationHours.toFixed(2)}h</span>
-              </div>
-            )}
-            {summary.totalTravelHours > 0 && (
-              <div className={timeEntryStyles.summaryItem}>
-                <span className={timeEntryStyles.summaryLabel}>Travel Hours:</span>
-                <span className={timeEntryStyles.summaryValue}>{summary.totalTravelHours.toFixed(2)}h</span>
-              </div>
-            )}
-            {summary.totalPtoHours > 0 && (
-              <div className={timeEntryStyles.summaryItem}>
-                <span className={timeEntryStyles.summaryLabel}>PTO Hours:</span>
-                <span className={timeEntryStyles.summaryValue}>{summary.totalPtoHours.toFixed(2)}h</span>
               </div>
             )}
             {summary.totalPerDiem > 0 && (
