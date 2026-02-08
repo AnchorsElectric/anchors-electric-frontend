@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import { canAccessRoute, UserRole } from '@/lib/config/routes';
 import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
+import { formatDateOnly } from '@/lib/utils/date';
 import styles from './user-detail.module.scss';
 import docStyles from '@/components/documents/documents.module.scss';
 import profileSectionStyles from '@/app/employee/profile/edit.module.scss';
@@ -58,6 +59,9 @@ export default function UserDetailPage() {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const canManageUser = userRole === 'ADMIN' || userRole === 'HR';
   const canChangeRole = userRole === 'ADMIN';
+  // HR may not deactivate or delete users who are ADMIN or HR
+  const canDeactivateOrDeleteSelectedUser =
+    userRole === 'ADMIN' || (userRole === 'HR' && user?.role !== 'ADMIN' && user?.role !== 'HR');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [employeeProfile, setEmployeeProfile] = useState<{ 
@@ -89,7 +93,9 @@ export default function UserDetailPage() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [showPtoRecalcConfirmModal, setShowPtoRecalcConfirmModal] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [originalEmployeeEmploymentStartDate, setOriginalEmployeeEmploymentStartDate] = useState('');
   const [savingEmployee, setSavingEmployee] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDocumentModal, setShowDeleteDocumentModal] = useState(false);
@@ -262,10 +268,13 @@ export default function UserDetailPage() {
           }
           if (userData.employee.employmentStartDate) {
             profile.employmentStartDate = userData.employee.employmentStartDate;
-            setEmployeeEmploymentStartDate(userData.employee.employmentStartDate);
+            const startDateStr = userData.employee.employmentStartDate;
+            setEmployeeEmploymentStartDate(startDateStr);
+            setOriginalEmployeeEmploymentStartDate(startDateStr);
           } else {
             const today = new Date().toISOString().split('T')[0];
             setEmployeeEmploymentStartDate(today);
+            setOriginalEmployeeEmploymentStartDate(today);
           }
           if (userData.employee.sickDaysLeft !== undefined && userData.employee.sickDaysLeft !== null) {
             profile.sickDaysLeft = userData.employee.sickDaysLeft;
@@ -285,6 +294,7 @@ export default function UserDetailPage() {
           setEmployeeWeeklyPtoRate('1.6');
           const today = new Date().toISOString().split('T')[0];
           setEmployeeEmploymentStartDate(today);
+          setOriginalEmployeeEmploymentStartDate(today);
           setEmployeeSickDaysLeft('5');
         }
       } else {
@@ -556,10 +566,13 @@ export default function UserDetailPage() {
         }
         if (employee.employmentStartDate) {
           profile.employmentStartDate = employee.employmentStartDate;
-          setEmployeeEmploymentStartDate(employee.employmentStartDate);
+          const startDateStr = employee.employmentStartDate;
+          setEmployeeEmploymentStartDate(startDateStr);
+          setOriginalEmployeeEmploymentStartDate(startDateStr);
         } else {
           const today = new Date().toISOString().split('T')[0];
           setEmployeeEmploymentStartDate(today);
+          setOriginalEmployeeEmploymentStartDate(today);
         }
         if (employee.sickDaysLeft !== undefined && employee.sickDaysLeft !== null) {
           profile.sickDaysLeft = employee.sickDaysLeft;
@@ -631,41 +644,12 @@ export default function UserDetailPage() {
     setSuccess('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate employee profile fields if they're being edited
-    if (employeePaymentType === 'HOURLY' && (!employeeHourlyRate || parseFloat(employeeHourlyRate) <= 0)) {
-      setError('Please enter a valid hourly rate');
-      return;
-    }
-    if (employeePaymentType === 'SALARY' && (!employeeSalaryAmount || parseFloat(employeeSalaryAmount) <= 0)) {
-      setError('Please enter a valid salary amount');
-      return;
-    }
-    if (!employeePtoCredit || parseFloat(employeePtoCredit) < 0 || isNaN(parseFloat(employeePtoCredit))) {
-      setError('Please enter a valid PTO credit value');
-      return;
-    }
-    if (!employeeWeeklyPtoRate || parseFloat(employeeWeeklyPtoRate) <= 0 || parseFloat(employeeWeeklyPtoRate) > 4.0 || isNaN(parseFloat(employeeWeeklyPtoRate))) {
-      setError('Please enter a valid weekly PTO rate (between 0 and 4.0)');
-      return;
-    }
-    if (!employeeSickDaysLeft || parseInt(employeeSickDaysLeft, 10) < 0 || isNaN(parseInt(employeeSickDaysLeft, 10))) {
-      setError('Please enter a valid sick days value');
-      return;
-    }
-    if (!employeeProjectId) {
-      setError('Please select a project');
-      return;
-    }
-
+  const doSave = async (recalculatePtoFromEmploymentStart?: boolean) => {
     setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      // Update user profile
       const updateData: any = {
         firstName: formData.firstName,
         middleName: formData.middleName || null,
@@ -701,13 +685,11 @@ export default function UserDetailPage() {
         return;
       }
 
-      // Update employee profile (only if it exists)
       if (employeeProfile) {
+        const employmentStartChanged = employeeEmploymentStartDate !== originalEmployeeEmploymentStartDate;
         const employeeData: any = {
           title: employeeTitle.trim(),
           paymentType: employeePaymentType,
-          ptoCredit: parseFloat(employeePtoCredit),
-          weeklyPtoRate: parseFloat(employeeWeeklyPtoRate),
           employmentStartDate: employeeEmploymentStartDate,
           sickDaysLeft: parseInt(employeeSickDaysLeft, 10),
         };
@@ -717,6 +699,18 @@ export default function UserDetailPage() {
           employeeData.salaryAmount = parseFloat(employeeSalaryAmount);
         }
         employeeData.currentProjectId = employeeProjectId;
+
+        if (employmentStartChanged && recalculatePtoFromEmploymentStart !== undefined) {
+          employeeData.recalculatePtoFromEmploymentStart = recalculatePtoFromEmploymentStart;
+          if (!recalculatePtoFromEmploymentStart) {
+            // Don't send PTO fields so backend leaves them unchanged
+          } else {
+            // Backend will calculate; don't send ptoCredit or weeklyPtoRate
+          }
+        } else {
+          employeeData.ptoCredit = parseFloat(employeePtoCredit);
+          employeeData.weeklyPtoRate = parseFloat(employeeWeeklyPtoRate);
+        }
 
         const employeeResponse = await apiClient.updateEmployeeProfile(userId, employeeData);
         if (!employeeResponse.success) {
@@ -728,6 +722,8 @@ export default function UserDetailPage() {
 
       setSuccess('User and employee profile updated successfully!');
       setIsEditing(false);
+      setOriginalEmployeeEmploymentStartDate(employeeEmploymentStartDate);
+      setShowPtoRecalcConfirmModal(false);
       await loadUser();
       await loadEmployeeProfile();
     } catch (err: any) {
@@ -735,6 +731,43 @@ export default function UserDetailPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (employeePaymentType === 'HOURLY' && (!employeeHourlyRate || parseFloat(employeeHourlyRate) <= 0)) {
+      setError('Please enter a valid hourly rate');
+      return;
+    }
+    if (employeePaymentType === 'SALARY' && (!employeeSalaryAmount || parseFloat(employeeSalaryAmount) <= 0)) {
+      setError('Please enter a valid salary amount');
+      return;
+    }
+    if (!employeePtoCredit || parseFloat(employeePtoCredit) < 0 || isNaN(parseFloat(employeePtoCredit))) {
+      setError('Please enter a valid PTO credit value');
+      return;
+    }
+    if (!employeeWeeklyPtoRate || parseFloat(employeeWeeklyPtoRate) <= 0 || parseFloat(employeeWeeklyPtoRate) > 4.0 || isNaN(parseFloat(employeeWeeklyPtoRate))) {
+      setError('Please enter a valid weekly PTO rate (between 0 and 4.0)');
+      return;
+    }
+    if (!employeeSickDaysLeft || parseInt(employeeSickDaysLeft, 10) < 0 || isNaN(parseInt(employeeSickDaysLeft, 10))) {
+      setError('Please enter a valid sick days value');
+      return;
+    }
+    if (!employeeProjectId) {
+      setError('Please select a project');
+      return;
+    }
+
+    const employmentStartChanged = employeeProfile && employeeEmploymentStartDate !== originalEmployeeEmploymentStartDate;
+    if (employmentStartChanged) {
+      setShowPtoRecalcConfirmModal(true);
+      return;
+    }
+
+    await doSave();
   };
 
   const handleCreateEmployeeProfile = async () => {
@@ -1035,7 +1068,7 @@ export default function UserDetailPage() {
                 </button>
               )}
               {user.isActive ? (
-                currentUserId && currentUserId !== userId && (
+                currentUserId && currentUserId !== userId && canDeactivateOrDeleteSelectedUser && (
                   <button 
                     type="button"
                     onClick={() => setShowDeactivateModal(true)} 
@@ -1046,7 +1079,7 @@ export default function UserDetailPage() {
                   </button>
                 )
               ) : (
-                currentUserId && currentUserId !== userId && (
+                currentUserId && currentUserId !== userId && canDeactivateOrDeleteSelectedUser && (
                   <button 
                     type="button"
                     onClick={handleReactivate} 
@@ -1057,7 +1090,7 @@ export default function UserDetailPage() {
                   </button>
                 )
               )}
-              {currentUserId && currentUserId !== userId && (
+              {currentUserId && currentUserId !== userId && canDeactivateOrDeleteSelectedUser && (
                 <button type="button" onClick={() => setShowDeleteModal(true)} className={styles.deleteButton}>
                   Delete User
                 </button>
@@ -1131,7 +1164,7 @@ export default function UserDetailPage() {
               <div className={styles.field}>
                 <label>Date of Birth</label>
                 <div className={styles.fieldValue}>
-                  {new Date(user.dateOfBirth).toLocaleDateString()}
+                  {formatDateOnly(user.dateOfBirth)}
                 </div>
               </div>
             )}
@@ -1986,6 +2019,48 @@ export default function UserDetailPage() {
                 disabled={saving}
               >
                 {saving ? 'Deactivating...' : 'Yes, Deactivate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PTO recalc confirmation when employment start date changed */}
+      {showPtoRecalcConfirmModal && (
+        <div className={styles.modalOverlay} onClick={() => !saving && setShowPtoRecalcConfirmModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Recalculate PTO?</h2>
+              <button
+                className={styles.modalClose}
+                onClick={() => !saving && setShowPtoRecalcConfirmModal(false)}
+                disabled={saving}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Employment start date has been changed. Would you like PTO rate and credit to be automatically calculated based on the new date?
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => {
+                  setShowPtoRecalcConfirmModal(false);
+                  doSave(false);
+                }}
+                disabled={saving}
+              >
+                No
+              </button>
+              <button
+                className={styles.saveButton}
+                onClick={() => doSave(true)}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Yes'}
               </button>
             </div>
           </div>

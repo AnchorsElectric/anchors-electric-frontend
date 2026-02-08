@@ -395,12 +395,22 @@ export default function EmployeePayPeriodsPage() {
                       {formatDate(period.startDate)} - {formatDate(period.endDate)}
                     </div>
                     <div className={styles.summary}>
-                      {period.totalHours !== null ? `${period.totalHours.toFixed(2)} hrs` : '0 hrs'}
-                      {period.totalOvertimeHours !== null && period.totalOvertimeHours > 0 && (
-                        <span className={styles.overtime}>
-                          {' '}({period.totalOvertimeHours.toFixed(2)} OT)
-                        </span>
-                      )}
+                      {(() => {
+                        const total = period.totalHours ?? 0;
+                        const ot = period.totalOvertimeHours ?? 0;
+                        const regular = Math.max(0, total - ot);
+                        if (period.totalOvertimeHours !== null && period.totalOvertimeHours > 0) {
+                          return (
+                            <>
+                              <span>{regular.toFixed(2)} regular hrs</span>
+                              <span className={styles.overtime}>
+                                {' • '}{period.totalOvertimeHours!.toFixed(2)} OT
+                              </span>
+                            </>
+                          );
+                        }
+                        return <span>{period.totalHours !== null ? `${period.totalHours.toFixed(2)} hrs` : '0 hrs'}</span>;
+                      })()}
                       {period.totalSickDays > 0 && (
                         <span className={styles.sickDays}> • {period.totalSickDays} sick day(s)</span>
                       )}
@@ -470,9 +480,13 @@ export default function EmployeePayPeriodsPage() {
                       <h3 className={timeEntryStyles.summaryTitle}>Week Summary</h3>
                       <div className={timeEntryStyles.summaryGrid}>
                         <div className={timeEntryStyles.summaryItem}>
-                          <span className={timeEntryStyles.summaryLabel}>Total Hours:</span>
+                          <span className={timeEntryStyles.summaryLabel}>Regular Hours:</span>
                           <span className={timeEntryStyles.summaryValue}>
-                            {period.totalHours !== null ? period.totalHours.toFixed(2) : '0.00'}
+                            {(() => {
+                              const total = period.totalHours ?? 0;
+                              const ot = period.totalOvertimeHours ?? 0;
+                              return Math.max(0, total - ot).toFixed(2);
+                            })()}
                           </span>
                         </div>
                         {period.totalOvertimeHours !== null && period.totalOvertimeHours > 0 && (
@@ -483,6 +497,12 @@ export default function EmployeePayPeriodsPage() {
                             </span>
                           </div>
                         )}
+                        <div className={timeEntryStyles.summaryItem}>
+                          <span className={timeEntryStyles.summaryLabel}>Total Hours:</span>
+                          <span className={timeEntryStyles.summaryValue}>
+                            {period.totalHours !== null ? period.totalHours.toFixed(2) : '0.00'}
+                          </span>
+                        </div>
                         {period.totalSickDays > 0 && (
                           <div className={timeEntryStyles.summaryItem}>
                             <span className={timeEntryStyles.summaryLabel}>Sick Days:</span>

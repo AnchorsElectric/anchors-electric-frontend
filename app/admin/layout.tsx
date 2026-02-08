@@ -16,6 +16,7 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [hasEmployeeProfile, setHasEmployeeProfile] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function AdminLayout({
         const data = response.data as any;
         const role = (data.user?.role || null) as UserRole | null;
         setUserRole(role);
+        setHasEmployeeProfile(!!data.user?.employee);
 
         if (!role) {
           router.push('/login');
@@ -115,7 +117,7 @@ export default function AdminLayout({
           Logout
         </button>
       </div>
-      <AppNavigation userRole={userRole} />
+      <AppNavigation userRole={userRole} hasEmployeeProfile={hasEmployeeProfile} />
       <div className={styles.content}>
         {children}
       </div>

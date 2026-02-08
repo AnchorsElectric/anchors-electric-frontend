@@ -6,16 +6,18 @@ import styles from './app-navigation.module.scss';
 
 interface AppNavigationProps {
   userRole: UserRole | null;
+  hasEmployeeProfile?: boolean;
 }
 
 /**
  * Unified navigation component that displays menu items based on user role
- * Shows all accessible routes regardless of /admin or /employee prefix
+ * Shows all accessible routes regardless of /admin or /employee prefix.
+ * Time Entries and Pay Period History are hidden when hasEmployeeProfile is false.
  */
-export default function AppNavigation({ userRole }: AppNavigationProps) {
+export default function AppNavigation({ userRole, hasEmployeeProfile = true }: AppNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const navItems = getNavigationItems(userRole);
+  const navItems = getNavigationItems(userRole, hasEmployeeProfile);
 
   const handleNavClick = (path: string) => {
     router.push(path);

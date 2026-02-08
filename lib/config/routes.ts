@@ -118,22 +118,31 @@ export function getDefaultRoute(role: UserRole | null | undefined): string {
 
 /**
  * Get navigation items for a user based on their role
- * Filters and groups routes appropriately
+ * Filters and groups routes appropriately.
+ * When hasEmployeeProfile is false (e.g. new user without employee profile), Time Entries and Pay Period History are hidden.
  */
-export function getNavigationItems(role: UserRole | null | undefined): RouteConfig[] {
+export function getNavigationItems(
+  role: UserRole | null | undefined,
+  hasEmployeeProfile: boolean = true
+): RouteConfig[] {
   if (!role) return [];
-  
-  // For USER role, explicitly return only the 3 allowed routes
+
+  const employeeOnlyPaths = ['/employee/time-entries', '/employee/pay-periods'];
+
+  // For USER role, explicitly return only the allowed routes; hide time/pay-period tabs if no employee profile
   if (role === 'USER') {
-    return APP_ROUTES.filter(route => 
-      route.path === '/employee/profile' ||
-      route.path === '/employee/time-entries' ||
-      route.path === '/employee/pay-periods'
-    );
+    return APP_ROUTES.filter(route => {
+      if (route.path === '/employee/profile') return true;
+      if (employeeOnlyPaths.includes(route.path)) return hasEmployeeProfile;
+      return false;
+    });
   }
-  
+
   // For staff roles, get all accessible routes
-  const accessibleRoutes = getRoutesForRole(role);
+  let accessibleRoutes = getRoutesForRole(role);
+  if (!hasEmployeeProfile) {
+    accessibleRoutes = accessibleRoutes.filter(route => !employeeOnlyPaths.includes(route.path));
+  }
   
   // Remove duplicates (e.g., both /employee/profile and /admin/profile)
   // Prefer admin routes for staff roles

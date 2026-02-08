@@ -283,6 +283,7 @@ class ApiClient {
       ptoCredit?: number;
       weeklyPtoRate?: number;
       employmentStartDate?: string;
+      recalculatePtoFromEmploymentStart?: boolean;
       sickDaysLeft?: number;
       currentProjectId?: string | null;
     }

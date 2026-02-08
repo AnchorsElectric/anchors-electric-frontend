@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
 import { formatPhoneNumber, getPhoneDigits } from '@/lib/utils/phone-format';
+import { formatDateOnly } from '@/lib/utils/date';
 import CertificatesSection from '@/components/documents/CertificatesSection';
 import DocumentsSection from '@/components/documents/DocumentsSection';
+import ProfilePictureCropModal from '@/components/profile-picture-crop/ProfilePictureCropModal';
 import styles from './edit.module.scss';
 
 export default function AdminProfilePage() {
@@ -70,6 +72,8 @@ export default function AdminProfilePage() {
   const [updatingRole, setUpdatingRole] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [pendingPictureFile, setPendingPictureFile] = useState<File | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [fileForCrop, setFileForCrop] = useState<File | null>(null);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -419,10 +423,20 @@ export default function AdminProfilePage() {
   const handlePictureFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      setPendingPictureFile(file);
+      setFileForCrop(file);
+      setShowCropModal(true);
       setError('');
     }
     e.target.value = '';
+  };
+  const handleCropApply = (croppedFile: File) => {
+    setPendingPictureFile(croppedFile);
+    setShowCropModal(false);
+    setFileForCrop(null);
+  };
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setFileForCrop(null);
   };
   const handleSavePicture = async () => {
     if (!pendingPictureFile) return;
@@ -482,6 +496,13 @@ export default function AdminProfilePage() {
 
   return (
     <div className={styles.container}>
+      {showCropModal && fileForCrop && (
+        <ProfilePictureCropModal
+          file={fileForCrop}
+          onApply={handleCropApply}
+          onCancel={handleCropCancel}
+        />
+      )}
       <div className={styles.card}>
         <div className={styles.header}>
           <div>
@@ -581,7 +602,7 @@ export default function AdminProfilePage() {
                   />
                 ) : (
                   <div className={styles.fieldValue}>
-                    {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}
+                    {formData.dateOfBirth ? formatDateOnly(formData.dateOfBirth) : 'N/A'}
                   </div>
                 )}
               </div>

@@ -222,7 +222,9 @@ export default function RegisterPage() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        <div className={styles.logoWrap}>
+          <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        </div>
         <h1 className={styles.title}>Create Account</h1>
         <p className={styles.subtitle}>Fill out the form below to register</p>
 

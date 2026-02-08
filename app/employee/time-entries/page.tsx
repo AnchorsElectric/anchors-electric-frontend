@@ -254,8 +254,8 @@ export default function TimeEntriesPage() {
     if (existingEntry) {
       
       if (isWeekend(date)) {
-        if (existingEntry.isPTO || existingEntry.isHoliday || existingEntry.sickDay || existingEntry.rotationDay) {
-          setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
+        if (existingEntry.isPTO || existingEntry.isHoliday || existingEntry.sickDay || existingEntry.rotationDay || existingEntry.isUnpaidLeave) {
+          setError('Holiday, Sick Day, PTO, Rotation Day, and Unpaid Leave cannot be logged on weekends. Please select a different entry type.');
           setEntryType('regular');
         } else {
           setEditingEntry(existingEntry);
@@ -464,8 +464,8 @@ export default function TimeEntriesPage() {
       }
       
       if (isWeekend(selectedDate)) {
-        if (entryTypeValue === 'holiday' || entryTypeValue === 'sick' || entryTypeValue === 'pto' || entryTypeValue === 'rotation') {
-          setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
+        if (entryTypeValue === 'holiday' || entryTypeValue === 'sick' || entryTypeValue === 'pto' || entryTypeValue === 'rotation' || entryTypeValue === 'unpaidLeave') {
+          setError('Holiday, Sick Day, PTO, Rotation Day, and Unpaid Leave cannot be logged on weekends. Please select a different entry type.');
           setLoading(false);
           return;
         }
@@ -563,8 +563,8 @@ export default function TimeEntriesPage() {
       setLoading(true);
 
       if (isWeekend(selectedDate)) {
-        if (entryType === 'holiday' || entryType === 'sick' || entryType === 'pto' || entryType === 'rotation') {
-          setError('Holiday, Sick Day, PTO, and Rotation Day cannot be logged on weekends. Please select a different entry type.');
+        if (entryType === 'holiday' || entryType === 'sick' || entryType === 'pto' || entryType === 'rotation' || entryType === 'unpaidLeave') {
+          setError('Holiday, Sick Day, PTO, Rotation Day, and Unpaid Leave cannot be logged on weekends. Please select a different entry type.');
           setLoading(false);
           return;
         }
@@ -1354,6 +1354,7 @@ export default function TimeEntriesPage() {
                       name="entryType"
                       value="unpaidLeave"
                       checked={entryType === 'unpaidLeave'}
+                      disabled={selectedDate ? isWeekend(selectedDate) : false}
                       onChange={(e) => {
                         setEntryType(e.target.value as EntryType);
                         setStartTime(null);
@@ -1362,6 +1363,7 @@ export default function TimeEntriesPage() {
                       }}
                     />
                     Unpaid Leave
+                    {selectedDate && isWeekend(selectedDate) && <span className={styles.disabledHint}> (Not available on weekends)</span>}
                   </label>
                 </div>
               </div>

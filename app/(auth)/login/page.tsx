@@ -56,7 +56,9 @@ function LoginContent() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        <div className={styles.logoWrap}>
+          <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        </div>
         <h1 className={styles.title}>Login</h1>
         <p className={styles.subtitle}>Sign in to your account</p>
 

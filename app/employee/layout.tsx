@@ -16,6 +16,7 @@ export default function EmployeeLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [hasEmployeeProfile, setHasEmployeeProfile] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,8 +50,8 @@ export default function EmployeeLayout({
       if (response.success && response.data) {
         const data = response.data as any;
         const role = (data.user?.role || null) as UserRole | null;
-        
         setUserRole(role);
+        setHasEmployeeProfile(!!data.user?.employee);
 
         if (!role) {
           router.push('/login');
@@ -76,6 +77,12 @@ export default function EmployeeLayout({
           
           if (!hasAccess) {
             router.push('/unauthorized');
+            return;
+          }
+          // Users without an employee profile should not access time-entries or pay-periods
+          if (!data.user?.employee && (pathname.startsWith('/employee/time-entries') || pathname.startsWith('/employee/pay-periods'))) {
+            router.push('/employee/profile');
+            return;
           }
         }
       } else {
@@ -114,7 +121,7 @@ export default function EmployeeLayout({
           Logout
         </button>
       </div>
-      <AppNavigation userRole={userRole} />
+      <AppNavigation userRole={userRole} hasEmployeeProfile={hasEmployeeProfile} />
       <div className={styles.content}>
         {children}
       </div>

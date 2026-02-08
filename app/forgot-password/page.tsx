@@ -35,7 +35,9 @@ export default function ForgotPasswordPage() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        <div className={styles.logoWrap}>
+          <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        </div>
         <h1 className={styles.title}>Forgot Password</h1>
         <p className={styles.subtitle}>Enter your email address and we'll send you a link to reset your password.</p>
 

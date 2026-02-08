@@ -12,13 +12,16 @@
   padding: 0 2rem;
   gap: 1rem;
   background: #ffffff;
+  position: relative;
 }
 
 .headerLogo {
-  height: 120px;
+  height: 96px;
   width: auto;
+  max-width: 360px;
   object-fit: contain;
   flex-shrink: 0;
+  margin: 1rem 0 0.5rem;
 }
 
 .employeeTitle {
@@ -26,6 +29,10 @@
   font-weight: 700;
   color: #000000;
   margin: 0;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .tabs {

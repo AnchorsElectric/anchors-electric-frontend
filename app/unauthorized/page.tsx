@@ -49,7 +49,9 @@ export default function UnauthorizedPage() {
     return (
       <div className={styles.container}>
         <div className={styles.card}>
-          <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+          <div className={styles.logoWrap}>
+            <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+          </div>
           <div className={styles.loading}>Loading...</div>
         </div>
       </div>
@@ -59,7 +61,9 @@ export default function UnauthorizedPage() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        <div className={styles.logoWrap}>
+          <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+        </div>
         <h1 className={styles.title}>Access Denied</h1>
         <p className={styles.message}>
           You don't have permission to access this page.
