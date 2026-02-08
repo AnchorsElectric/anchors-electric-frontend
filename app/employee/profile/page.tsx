@@ -393,6 +393,7 @@ export default function EditProfilePage() {
   };
 
   const handleEditClick = () => {
+    setFormData(originalFormData);
     setIsEditing(true);
     setError('');
     setSuccess('');
@@ -508,18 +509,53 @@ export default function EditProfilePage() {
             <div className={styles.sectionRow}>
               <div className={styles.fields}>
                 <div className={styles.field}>
-                  <label htmlFor="firstName">First Name</label>
-                  <div className={styles.fieldValue}>{formData.firstName || 'N/A'}</div>
+                  <label htmlFor="firstName">First Name{isEditing && ' *'}</label>
+                  {isEditing ? (
+                    <input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      required
+                      disabled={loading}
+                    />
+                  ) : (
+                    <div className={styles.fieldValue}>{formData.firstName || 'N/A'}</div>
+                  )}
                 </div>
 
                 <div className={styles.field}>
                   <label htmlFor="middleName">Middle Name</label>
-                  <div className={styles.fieldValue}>{formData.middleName || 'N/A'}</div>
+                  {isEditing ? (
+                    <input
+                      id="middleName"
+                      name="middleName"
+                      type="text"
+                      value={formData.middleName}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                  ) : (
+                    <div className={styles.fieldValue}>{formData.middleName || 'N/A'}</div>
+                  )}
                 </div>
 
                 <div className={styles.field}>
-                  <label htmlFor="lastName">Last Name</label>
-                  <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
+                  <label htmlFor="lastName">Last Name{isEditing && ' *'}</label>
+                  {isEditing ? (
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      required
+                      disabled={loading}
+                    />
+                  ) : (
+                    <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
+                  )}
                 </div>
 
                 <div className={styles.field}>

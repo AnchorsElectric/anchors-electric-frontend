@@ -402,6 +402,7 @@ export default function AdminProfilePage() {
   };
 
   const handleEditClick = () => {
+    setFormData(originalFormData);
     setIsEditing(true);
     setError('');
     setSuccess('');
