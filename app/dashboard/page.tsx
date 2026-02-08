@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getAuthToken, removeAuthToken } from '@/lib/utils/auth';
 import { apiClient } from '@/lib/api/client';
+import { getDefaultRoute, type UserRole } from '@/lib/config/routes';
 import styles from './dashboard.module.scss';
 
 function DashboardContent() {
@@ -28,7 +29,6 @@ function DashboardContent() {
       setLoading(true);
       const response = await apiClient.getProfile();
       if (response.success && response.data) {
-        const { getDefaultRoute, UserRole } = await import('@/lib/config/routes');
         const data = response.data as any;
         const role = (data.user?.role || null) as UserRole | null;
         setIsAdmin(role === 'ADMIN');
