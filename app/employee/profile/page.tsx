@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/utils/auth';
@@ -66,6 +66,10 @@ export default function EditProfilePage() {
   const [userRole, setUserRole] = useState<string>('');
   const [createdAt, setCreatedAt] = useState<string>('');
   const [updatedAt, setUpdatedAt] = useState<string>('');
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [pendingPictureFile, setPendingPictureFile] = useState<File | null>(null);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -101,6 +105,7 @@ export default function EditProfilePage() {
         setUserRole(user.role || '');
         setCreatedAt(user.createdAt || '');
         setUpdatedAt(user.updatedAt || '');
+        setProfilePictureUrl(user.profilePictureUrl || null);
         const loadedData = {
           firstName: user.firstName || '',
           middleName: user.middleName || '',
@@ -393,6 +398,61 @@ export default function EditProfilePage() {
     setSuccess('');
   };
 
+  const handlePictureClick = () => fileInputRef.current?.click();
+  const handlePictureFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setPendingPictureFile(file);
+      setError('');
+    }
+    e.target.value = '';
+  };
+  const handleSavePicture = async () => {
+    if (!pendingPictureFile) return;
+    setUploadingPicture(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await apiClient.uploadProfilePicture(pendingPictureFile);
+      if (response.success) {
+        const data = response.data as { profilePictureUrl?: string } | undefined;
+        const url = (data?.profilePictureUrl != null && data.profilePictureUrl !== '') ? data.profilePictureUrl : null;
+        setProfilePictureUrl(url);
+        setPendingPictureFile(null);
+        setSuccess('Profile picture updated.');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.error || 'Failed to upload picture');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to upload picture');
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
+  const handleCancelPicture = () => setPendingPictureFile(null);
+  const handleDeletePicture = async () => {
+    if (!window.confirm('Remove your profile picture? This cannot be undone.')) return;
+    setUploadingPicture(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await apiClient.deleteProfilePicture();
+      if (response.success) {
+        setProfilePictureUrl(null);
+        setPendingPictureFile(null);
+        setSuccess('Profile picture removed.');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.error || 'Failed to delete picture');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete picture');
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
+
   const handleCancelEdit = () => {
     setFormData(originalFormData);
     setIsEditing(false);
@@ -441,36 +501,85 @@ export default function EditProfilePage() {
         {success && <div className={styles.success}>{success}</div>}
         {error && <div className={styles.error}>{error}</div>}
 
-        <form id="employee-profile-form" onSubmit={handleSubmit}>
+        <form id="employee-profile-form" onSubmit={handleSubmit} className={styles.formMain}>
           {/* Personal Information Section */}
           <div className={styles.section}>
             <h2 className={styles.sectionTitle}>Personal Information</h2>
-            <div className={styles.fields}>
-              <div className={styles.field}>
-                <label htmlFor="firstName">First Name</label>
-                <div className={styles.fieldValue}>{formData.firstName || 'N/A'}</div>
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="middleName">Middle Name</label>
-                <div className={styles.fieldValue}>{formData.middleName || 'N/A'}</div>
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="lastName">Last Name</label>
-                <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
-              </div>
-
-              <div className={styles.field}>
-                <label>SSN</label>
-                <div className={styles.fieldValue}>{formData.ssn || 'N/A'}</div>
-              </div>
-
-              <div className={styles.field}>
-                <label>Date of Birth</label>
-                <div className={styles.fieldValue}>
-                  {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}
+            <div className={styles.sectionRow}>
+              <div className={styles.fields}>
+                <div className={styles.field}>
+                  <label htmlFor="firstName">First Name</label>
+                  <div className={styles.fieldValue}>{formData.firstName || 'N/A'}</div>
                 </div>
+
+                <div className={styles.field}>
+                  <label htmlFor="middleName">Middle Name</label>
+                  <div className={styles.fieldValue}>{formData.middleName || 'N/A'}</div>
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor="lastName">Last Name</label>
+                  <div className={styles.fieldValue}>{formData.lastName || 'N/A'}</div>
+                </div>
+
+                <div className={styles.field}>
+                  <label>SSN</label>
+                  <div className={styles.fieldValue}>{formData.ssn || 'N/A'}</div>
+                </div>
+
+                <div className={styles.field}>
+                  <label>Date of Birth</label>
+                  <div className={styles.fieldValue}>
+                    {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}
+                  </div>
+                </div>
+              </div>
+              <div className={styles.sectionPicture}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePictureFileChange}
+                  style={{ display: 'none' }}
+                  aria-hidden
+                />
+                <button
+                  type="button"
+                  className={styles.pictureCircle}
+                  onClick={handlePictureClick}
+                  disabled={uploadingPicture}
+                  aria-label="Upload profile picture"
+                >
+                  {pendingPictureFile ? (
+                    <img src={URL.createObjectURL(pendingPictureFile)} alt="Preview" />
+                  ) : profilePictureUrl ? (
+                    <img key={profilePictureUrl} src={profilePictureUrl} alt="Profile" />
+                  ) : (
+                    <span className={styles.picturePlaceholder}>Click to upload</span>
+                  )}
+                </button>
+                {pendingPictureFile && (
+                  <div className={styles.pictureActions}>
+                    <button type="button" className={styles.pictureLink} onClick={handleSavePicture} disabled={uploadingPicture}>
+                      Save
+                    </button>
+                    <button type="button" className={styles.pictureLink} onClick={handleCancelPicture} disabled={uploadingPicture}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                {(profilePictureUrl || pendingPictureFile) && (
+                  <div className={styles.pictureActions}>
+                    <button type="button" className={styles.pictureLink} onClick={handlePictureClick} disabled={uploadingPicture}>
+                      Change
+                    </button>
+                    {profilePictureUrl && !pendingPictureFile && (
+                      <button type="button" className={`${styles.pictureLink} ${styles.pictureLinkDelete}`} onClick={handleDeletePicture} disabled={uploadingPicture}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

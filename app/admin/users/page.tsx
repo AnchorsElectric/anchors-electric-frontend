@@ -18,6 +18,7 @@ interface User {
   role: string;
   emailVerified: boolean;
   isActive: boolean;
+  profilePictureUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   employee?: {
@@ -176,6 +177,7 @@ export default function AdminUsersPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th>Photo</th>
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
@@ -189,7 +191,7 @@ export default function AdminUsersPage() {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={styles.noData}>
+                  <td colSpan={9} className={styles.noData}>
                     No users found
                   </td>
                 </tr>
@@ -200,6 +202,17 @@ export default function AdminUsersPage() {
                     onClick={() => router.push(`/admin/users/${user.id}`)}
                     className={styles.clickableRow}
                   >
+                    <td>
+                      <div className={styles.avatarCell}>
+                        {user.profilePictureUrl ? (
+                          <img src={user.profilePictureUrl} alt="" className={styles.avatarImg} />
+                        ) : (
+                          <span className={styles.avatarPlaceholder}>
+                            {user.firstName?.[0]}{user.lastName?.[0]}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       {user.firstName}
                       {user.middleName ? ` ${user.middleName}` : ''} {user.lastName}

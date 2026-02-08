@@ -8,8 +8,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  padding: 0 1rem;
+  margin: -2rem -2rem 0 -2rem;
+  padding: 0 2rem;
+  gap: 1rem;
+  background: #ffffff;
+}
+
+.headerLogo {
+  height: 120px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .adminTitle {

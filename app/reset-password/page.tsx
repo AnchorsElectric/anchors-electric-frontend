@@ -66,6 +66,7 @@ function ResetPasswordContent() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
+        <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
         <h1 className={styles.title}>Reset Password</h1>
         <p className={styles.subtitle}>Enter your new password below.</p>
 

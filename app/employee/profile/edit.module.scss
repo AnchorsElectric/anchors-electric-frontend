@@ -87,6 +87,100 @@
   border: 1px solid #c3e6cb;
 }
 
+.formMain {
+  max-width: 100%;
+}
+
+.sectionRow {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-top: 0.5rem;
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+  }
+  .fields {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.sectionPicture {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pictureCircle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px dashed #ccc;
+  background: #f5f5f5;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: #007bff;
+    background: #e8f4ff;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.picturePlaceholder {
+  color: #999;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.pictureActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pictureLink {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  padding: 0;
+
+  &:hover {
+    color: #0056b3;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.pictureLinkDelete {
+  color: #c00;
+
+  &:hover {
+    color: #a00;
+  }
+}
+
 .section {
   margin-bottom: 2.5rem;
 }

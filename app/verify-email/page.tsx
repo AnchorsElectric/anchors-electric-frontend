@@ -53,6 +53,7 @@ function VerifyEmailContent() {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
+        <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
         {status === 'loading' && (
           <>
             <h1 className={styles.title}>Verifying Email...</h1>

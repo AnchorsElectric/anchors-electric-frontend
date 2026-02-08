@@ -109,6 +109,7 @@ export default function AdminLayout({
   return (
     <div className={styles.adminContainer}>
       <div className={styles.adminHeader}>
+        <img src="/logo.png" alt="Anchors Electric" className={styles.headerLogo} />
         <h1 className={styles.adminTitle}>Dashboard</h1>
         <button onClick={handleLogout} className={styles.logoutButton}>
           Logout

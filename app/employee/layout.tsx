@@ -108,6 +108,7 @@ export default function EmployeeLayout({
   return (
     <div className={styles.employeeContainer}>
       <div className={styles.employeeHeader}>
+        <img src="/logo.png" alt="Anchors Electric" className={styles.headerLogo} />
         <h1 className={styles.employeeTitle}>Employee Dashboard</h1>
         <button onClick={handleLogout} className={styles.logoutButton}>
           Logout

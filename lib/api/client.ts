@@ -181,6 +181,20 @@ class ApiClient {
     return response.data;
   }
 
+  async uploadProfilePicture(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await this.client.post<ApiResponse>('/profile/picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
+  async deleteProfilePicture() {
+    const response = await this.client.delete<ApiResponse>('/profile/picture');
+    return response.data;
+  }
+
   async getUsers(search?: string) {
     const params = search ? `?search=${encodeURIComponent(search)}` : '';
     const response = await this.client.get<ApiResponse>(`/admin/users${params}`);

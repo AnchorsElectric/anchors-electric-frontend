@@ -34,6 +34,7 @@ interface User {
   glovesSize: string | null;
   vestSize: string | null;
   jacketSize: string | null;
+  profilePictureUrl?: string | null;
   emergencyContacts: Array<{
     id: string;
     firstName: string;
@@ -935,7 +936,19 @@ export default function UserDetailPage() {
             <h1 className={styles.title}>User Details</h1>
             <p className={styles.subtitle}>View and manage user information</p>
           </div>
-          <div className={styles.headerActions}>
+          <div className={styles.headerRight}>
+            {user && (
+              <div className={styles.profilePictureWrap}>
+                {user.profilePictureUrl ? (
+                  <img src={user.profilePictureUrl} alt="" className={styles.profilePictureImg} />
+                ) : (
+                  <span className={styles.profilePicturePlaceholder}>
+                    {user.firstName?.[0]}{user.lastName?.[0]}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className={styles.headerActions}>
           {!isEditing && canManageUser && (
             <>
               {user && employeeProfile && (
@@ -1054,6 +1067,7 @@ export default function UserDetailPage() {
           <button type="button" onClick={() => router.push('/admin/users')} className={styles.backButton}>
             ← Back to Users
           </button>
+            </div>
           </div>
         </div>
 
