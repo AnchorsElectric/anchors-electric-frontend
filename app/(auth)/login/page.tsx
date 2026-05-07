@@ -33,9 +33,9 @@ function LoginContent() {
       if (response.success && response.data) {
         const { token, user } = response.data as { token: string; user: any };
         setAuthToken(token);
-        
+
         const userRole = (user?.role || null) as UserRole | null;
-        
+
         if (userRole) {
           const defaultRoute = getDefaultRoute(userRole);
           router.push(defaultRoute);
@@ -57,10 +57,9 @@ function LoginContent() {
     <div className={styles.container}>
       <div className={styles.card}>
         <div className={styles.logoWrap}>
-          <img src="/logo.png" alt="Anchors Electric" className={styles.logo} />
+          <img src="/anchors-logo.svg" alt="Anchors Electric" className={styles.logo} />
+          <p className={styles.subtitle}>Timesheet</p>
         </div>
-        <h1 className={styles.title}>Login</h1>
-        <p className={styles.subtitle}>Sign in to your account</p>
 
         {success && <div className={styles.success}>{success}</div>}
         {error && <div className={styles.error}>{error}</div>}
@@ -75,6 +74,7 @@ function LoginContent() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
+              autoComplete="email"
             />
           </div>
 
@@ -87,6 +87,7 @@ function LoginContent() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 
@@ -95,18 +96,18 @@ function LoginContent() {
             className={styles.button}
             disabled={loading}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
         <div className={styles.forgotPassword}>
           <a href="/forgot-password" className={styles.forgotLink}>
-            Forgot Password?
+            Forgot password?
           </a>
         </div>
 
         <p className={styles.footer}>
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <a href="/register" className={styles.link}>
             Register
           </a>
@@ -118,13 +119,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className={styles.container}>
-        <div className={styles.card}>
-          <h1 className={styles.title}>Loading...</h1>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<div className={styles.container} />}>
       <LoginContent />
     </Suspense>
   );
